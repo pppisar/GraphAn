@@ -28,7 +28,7 @@ class Generator:
   '''
 
   @staticmethod
-  def inputNum(request, max=None):
+  def inputNum(request, max = None):
     while True:
       inp = input(f"{request}: ")
       if inp.isnumeric():
@@ -224,7 +224,7 @@ class Generator:
 
   def createVariant(self):
     g1Size = self.inputNum("Введіть розмірність надграфа")
-    g1Symbol = self.inputChar("Введіть пизначення надграфа")
+    g1Symbol = self.inputChar("Введіть позначення надграфа")
     v1Symbol = self.inputChar("Введіть позначення множини вершин надграфа")
     e1Symbol = self.inputChar("Введіть позначення множини ребер надграфа")
     nullVrtx = self.stringToBool("Чи може вершина не містити можливих переходів?"
@@ -234,7 +234,7 @@ class Generator:
                                                 "(\"Так\", або \"Ні\")",
                                                 "Так", "Ні")
     g2Size = self.inputNum("Введіть розмірність підграфа", g1Size)
-    g2Symbol = self.inputChar("Введіть пизначення підграфа")
+    g2Symbol = self.inputChar("Введіть позначення підграфа")
     v2Symbol = self.inputChar("Введіть позначення множини вершин підграфа")
     e2Symbol = self.inputChar("Введіть позначення множини ребер підграфа")
     self.generateSubgraph(g2Size, g2Symbol, v2Symbol, e2Symbol)

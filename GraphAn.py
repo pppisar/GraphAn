@@ -9,11 +9,12 @@ from borb.pdf import Image
 from borb.pdf import PDF
 from decimal import Decimal
 from pathlib import Path
-from PIL import Image as ImgSize
+from PIL import Image as ImgReader
 
 from math import ceil
 import time
 
+from data import *
 
 '''
 (Eng) Class that contains all the information about a given graph    |
@@ -31,6 +32,7 @@ class Graph:
     self.edge: str = eSymbol
     self.fullName: str = f"{gSymbol} = ({vSymbol}, {eSymbol})"
     self.hd: dict = self.countHalfDegrees()
+    self.matrix: list = []
 
   '''
   (Eng) A method that calculates the outdegrees| 
@@ -108,6 +110,21 @@ class Graph:
       return False
 
 
+  def makeMatrix(self):
+    for vrtxEdges in self.graph.values():
+      newMatrixLine = []
+      for vrtx in self.graph:
+        if vrtx in vrtxEdges:
+          newMatrixLine.append(1)
+        else:
+          newMatrixLine.append(0)
+      self.matrix.append(newMatrixLine)
+    for ml in self.matrix:
+      print(ml)
+    print()
+
+
+
 '''
 (Eng) An analysis class that implements all the steps of |
 the isomorphic embedding analysis algorithm              |
@@ -163,7 +180,7 @@ class Analysis:
     pdf.add_page(page1)
     layout1 = SingleColumnLayout(page1)
 
-    img = ImgSize.open(f"pngs/{self.graph1.fullName}.png")
+    img = ImgReader.open(f"pngs/{self.graph1.fullName}.png")
     (w, h) = img.size
     if (h > 660):
       w = int(w * 660 / h)
@@ -181,7 +198,7 @@ class Analysis:
     pdf.add_page(page2)
     layout2 = SingleColumnLayout(page2)
 
-    img = ImgSize.open(f"pngs/{self.graph2.fullName}.png")
+    img = ImgReader.open(f"pngs/{self.graph2.fullName}.png")
     (w, h) = img.size
     if (h > 660):
       w = int(w * 660 / h)
@@ -637,4 +654,9 @@ class Analysis:
 
 
 if __name__ == '__main__':
-  pass
+  g1 = Graph(dodatok1["GAL2"], 'G', 'X', 'F')
+  g1.makeMatrix()
+  g2 = Graph(dodatok1["GAL1"], 'H', 'Y', 'P')
+  g2.makeMatrix()
+  An1 = Analysis(g1, g2, "test", True, True)
+  An1.makeAnalysis()
