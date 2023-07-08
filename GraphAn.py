@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 
 import graphviz as gviz
 
@@ -17,109 +17,161 @@ from math import ceil
 import time
 
 
-'''
-Class that contains all the information about a given graph
-'''
-
-
 class Graph:
+  """
+  Class that contains all the information about a given graph
+
+  Args:
+    graph (dict): A graph defined using adjacency lists
+    gSymbol (str): Name of the graph (Symbol by which it is denoted)
+    vSymbol (str): Name of the vertex set (Symbol by which it is denoted)
+    eSymbol (str): Name of the edges set (Symbol by which it is denoted)
+
+  Attributes:
+    graph (np.ndarray): Graph adjacency matrix using Numpy array
+    size (int): Graph dimensionality
+    name (str): Full name of the graph (including the set of vertices and edges)
+    vertex (str): Name of the vertex set (Symbol by which it is denoted)
+    edge (str): Name of the edges set (Symbol by which it is denoted)
+    hd (np.ndarray): The calculated table of outdegrees and indegrees
+    transition (dict): Marking a graph vertex with a number (used when switching from the Numpy representation)
+  """
+
   def __init__(self, graph: dict, gSymbol: str, vSymbol: str, eSymbol: str):
-    self.graph: dict = graph
     self.size: int = len(graph)
     self.name: str = gSymbol
     self.vertex: str = vSymbol
     self.edge: str = eSymbol
     self.fullName: str = f"{gSymbol} = ({vSymbol}, {eSymbol})"
-    self.hd: dict = self.countHalfDegrees()
-    self.matrix: list = []
+    self.transition: dict = dict()
+    self.graph: np.ndarray = self.transformToMatrix(graph)
+    self.hd: np.ndarray = self.countHalfDegrees(graph)
 
-  '''
-  A method that calculates the outdegrees and indegrees of a given graph
-  '''
+  def transformToMatrix(self, graph: dict) -> np.ndarray:
+    """
+    A method that converts adjacency lists to an adjacency matrix
 
-  def countHalfDegrees(self):
-    hd = {}
-    for vertex in self.graph:
-      hdOut = len(self.graph[vertex])
-      hdIn = 0
-      for adjList in self.graph.values():
-        hdIn += adjList.count(vertex)
-      hd[vertex] = [hdOut, hdIn]
-    return hd
+    Args:
+      graph (dict): Adjacency lists defined with a dictionary
 
-  '''
-  A method that formats a string to display information correctly
-  '''
+    Returns:
+      adjacencyMatrix (np.ndarray()): Graph adjacency matrix
+    """
+    transitionToNumber = dict()
+
+    matrixSize = len(graph.keys())
+    adjacencyMatrix = np.zeros((matrixSize, matrixSize), dtype=int)
+
+    for index, vertex in enumerate(graph.keys()):
+      self.transition[index] = vertex
+      transitionToNumber[vertex] = index
+    for vertexFrom, edges in enumerate(graph.values()):
+      for vertexTo in edges:
+        adjacencyMatrix[vertexFrom, transitionToNumber[vertexTo]] = 1
+
+    return adjacencyMatrix
+
+  def countHalfDegrees(self, graph: dict) -> np.ndarray:
+    """
+    A method that calculates the outdegrees and indegrees of a given graph
+
+    Args:
+      graph (dict): Adjacency lists defined with a dictionary
+
+    Returns:
+      halfDegrees: The calculated table of outdegrees and indegrees
+    """
+    halfDegrees = np.zeros((len(graph.keys()), 2), dtype=int)
+
+    for index, vertex in enumerate(graph.keys()):
+      hdOut = len(graph[vertex])
+      hdIn = np.count_nonzero(self.graph[:, index] == 1)
+      halfDegrees[index] = [hdOut, hdIn]
+    return halfDegrees
 
   @staticmethod
-  def stringFormat(line, r1, r2):
+  def stringFormat(line, r1, r2) -> str:
+    """
+    A method that formats a string to display information correctly
+
+    Args:
+      line (str): The line in which you need to replace the brackets [ and ]
+      r1 (str): The character to replace the bracket [
+      r2 (str): The character to replace the bracket ]
+
+    Returns:
+      A string with replaced brackets [ and ]
+    """
     return line.replace('[', r1).replace(']', r2).replace("'", "")
 
-  '''
-  The method that prints the calculated table of outdegrees 
-  and indegrees using adjacency lists representing the given graph
-  '''
+  def printHalfDegreesTable(self, graph: dict) -> list:
+    """
+    The method that prints the calculated table of outdegrees
+    and indegrees using adjacency lists representing the given graph
 
-  def printHalfDegreesTable(self, output, todoPDF, printDetails):
-    if printDetails:
-      print(f"Граф {self.fullName} | Розмірність: {self.size}")
-    if todoPDF:
-      output.append(f"Graph {self.fullName} | Size: {self.size}")
+    Args:
+      graph (dict): Adjacency lists defined with a dictionary
+      Uses class attributes: self.fullName, self.size and self.hd,
 
-    for vertex in self.graph:
-      if printDetails:
-        print(f"{vertex}" +
-              self.stringFormat(f"\t| {self.hd[vertex]} |\t", '(', ')') +
-              self.stringFormat(f"{self.graph[vertex]}", '{', '}'))
-      if todoPDF:
-        output.append(f"{vertex} | " +
-                      self.stringFormat(f"{self.hd[vertex]} | ", '(', ')') +
-                      self.stringFormat(f"{self.graph[vertex]}", '{', '}'))
+    Returns:
+      A list of strings representing the calculated outdegrees and indegrees table with the specified adjacency lists
 
-  '''
-  A method that generates a graphical representation of a given graph
-  '''
+    """
+    output = list()
+    output.append(f"Graph {self.fullName} | Size: {self.size}")
+    for index, vertex in enumerate(graph):
+      output.append(f"{vertex} | " +
+                    self.stringFormat(f"{self.hd[index]} | ", '(', ')') +
+                    self.stringFormat(f"{graph[vertex]}", '{', '}'))
+    return output
 
-  def buildGraphImage(self):
+  def buildGraphImage(self, graph) -> None:
+    """
+    A method that generates a graphical representation of a given graph
+
+    Args:
+      graph (dict): Adjacency lists defined with a dictionary
+      Uses class attributes: self.fullName
+    """
     g = gviz.Digraph('graph', engine='neato',
                      graph_attr={'splines': 'true', 'overlap': 'false',
                                  'sep': str(1.5), 'normalize': 'true',
                                  'label': f"{self.fullName}",
                                  'fontsize': str(20)},
                      node_attr={'shape': 'circle', 'fontsize': str(20)})
-    for vertex in self.graph:
+    for vertex in graph:
       g.node(vertex, vertex)
-      for nextvertex in self.graph[vertex]:
-        g.edge(vertex, nextvertex)
-    try:
-      g.render(filename=f"{self.fullName}", format="png", directory="pngs")
-      return True
-    except:
-      return False
-
-  def makeMatrix(self):
-    for vrtxEdges in self.graph.values():
-      newMatrixLine = []
-      for vrtx in self.graph:
-        if vrtx in vrtxEdges:
-          newMatrixLine.append(1)
-        else:
-          newMatrixLine.append(0)
-      self.matrix.append(newMatrixLine)
-    for ml in self.matrix:
-      print(ml)
-    print()
-
-
-'''
-An analysis class that implements all the steps of the isomorphic embedding analysis algorithm
-'''
+      for nextVertex in graph[vertex]:
+        g.edge(vertex, nextVertex)
+    g.render(filename=f"{self.fullName}", format="png", directory="pngs")
 
 
 class Analysis:
-  def __init__(self, graph1: Graph, graph2: Graph, fileName: str = None):
-    self.graph1: Graph = graph1
-    self.graph2: Graph = graph2
+  """
+  An analysis class that implements all the steps of the isomorphic embedding analysis algorithm
+
+  Args:
+    graph1 (dict): A graph defined using adjacency lists
+    graph2 (dict): Name of the graph (Symbol by which it is denoted)
+    fileName (str): Name of the vertex set (Symbol by which it is denoted)
+
+  Attributes:
+    graph1 (Graph): Graph representation using a numpy array
+    graph2 (Graph): Graph representation using a numpy array
+    fileName (str): Graph dimensionality
+    output (list): Full name of the graph (including the set of vertices and edges)
+    maxSubs (dict): Name of the vertex set (Symbol by which it is denoted)
+    maxVariants (list): Name of the edges set (Symbol by which it is denoted)
+    partialSubs (list): Name of the edges set (Symbol by which it is denoted)
+    partialVariants (list): Name of the edges set (Symbol by which it is denoted)
+    completeSubs (list): The calculated table of semi-powers, which is specified using a numpy array
+    analysisResult (int):
+    analysisResult (float):
+  """
+
+  def __init__(self, graph1: dict, graph2: dict, fileName: str = None):
+    self.graph1: Graph = Graph(graph1)
+    self.graph2: Graph = Graph(graph2)
     self.fileName: str = fileName
     self.output: list = [[], []]
     self.maxSubs: dict = {}
@@ -130,11 +182,16 @@ class Analysis:
     self.analysisResult: int = 0
     self.analysisTime: float = 0
 
-  '''
-  Resetting attributes before performing a new analysis
-  '''
-
   def clear(self):
+    """
+    Resetting attributes before performing a new analysis
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     self.output = [[], []]
     self.maxSubs = {}
     self.maxVariants = []
@@ -144,11 +201,16 @@ class Analysis:
     self.analysisResult = 0
     self.analysisTime = 0
 
-  '''
-  Generating a report in PDF format with the results of the analysis
-  '''
-
   def makePDF(self):
+    """
+    Generating a report in PDF format with the results of the analysis
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     pdf = Document()
 
     page1 = Page()
@@ -158,11 +220,11 @@ class Analysis:
     img = ImgReader.open(f"pngs/{self.graph1.fullName}.png")
     (w, h) = img.size
     if h > 660:
-        w = int(w * 660 / h)
-        h = 660
+      w = int(w * 660 / h)
+      h = 660
     if w > 470:
-        h = int(h * 470 / w)
-        w = 470
+      h = int(h * 470 / w)
+      w = 470
     layout1.add(Image(Path(f"pngs/{self.graph1.fullName}.png"),
                       width=w, height=h))
 
@@ -222,20 +284,30 @@ class Analysis:
       PDF.dumps(pdf_file_handle, pdf)
     print(f"Звіт збережено до файлу {self.fileName}.pdf")
 
-  '''
-  Function for displaying a substitution to the console
-  '''
-
   @staticmethod
   def printSub(sub):
+    """
+    Function for displaying a substitution to the console
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     print('\t'.join(sub.keys()))
     print('\t'.join(sub.values()))
 
-  '''
-  A function for outputting text to the console and a pdf report
-  '''
-
   def makeRecord(self, output, engText, ukrText):
+    """
+    A function for outputting text to the console and a pdf report
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     if self.todoPDF:
       for text in engText:
         output.append(text)
@@ -243,12 +315,17 @@ class Analysis:
       for text in ukrText:
         print(text)
 
-  '''
-  Function that checks the possibility of finding a combination (one)
-  without repeating vertices that satisfies condition A of Theorem 1
-  '''
-
   def findCombCondA(self, variants, current):
+    """
+    Function that checks the possibility of finding a combination (one)
+    without repeating vertices that satisfies condition A of Theorem 1
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     if len(current) == len(variants):
       return True
 
@@ -264,11 +341,16 @@ class Analysis:
         break
     return False
 
-  '''
-  Verification of condition A of Theorem 1
-  '''
-
   def checkCondA(self):
+    """
+    Verification of condition A of Theorem 1
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     possiblevertexs = {}
     for vertex1 in self.graph1.hd:
       possiblevertexs[vertex1] = list(
@@ -281,11 +363,16 @@ class Analysis:
         return False
     return self.findCombCondA(possiblevertexs, {})
 
-  '''
-  Verification of (partial) substitution of condition B of Theorem 1
-  '''
-
   def conditionB(self, sub):
+    """
+    Verification of (partial) substitution of condition B of Theorem 1
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     for vertex in sub.keys():
       for nextvertex in self.graph1.graph[vertex]:
         if nextvertex in sub.keys() \
@@ -300,11 +387,16 @@ class Analysis:
           return False
     return True
 
-  '''
-  Finding all combinations without repetition that satisfy condition B of Theorem 1
-  '''
-
   def findCombCondB(self, variants, res, current):
+    """
+    Finding all combinations without repetition that satisfy condition B of Theorem 1
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     if len(current) == len(variants) and self.conditionB(current):
       res.append(current.copy())
       return
@@ -319,18 +411,23 @@ class Analysis:
             current.pop(i)
         break
 
-  '''
-  Mapping of vertices with the largest output half-degree according to condition A of Theorem 1
-  '''
-
   def makeMaxSub(self):
+    """
+    Mapping of vertices with the largest output half-degree according to condition A of Theorem 1
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     hdG1SortOut = {k: v for k, v in sorted(self.graph1.hd.items(),
                                            key=lambda elem: elem[1][0],
                                            reverse=True)}
     key = list(
-        filter(lambda v:
-               hdG1SortOut[v][0] == hdG1SortOut[list(hdG1SortOut.keys())[0]][0],
-               hdG1SortOut)
+      filter(lambda v:
+             hdG1SortOut[v][0] == hdG1SortOut[list(hdG1SortOut.keys())[0]][0],
+             hdG1SortOut)
     )
     for vertex1 in key:
       for vertex2 in self.graph2.hd:
@@ -345,11 +442,16 @@ class Analysis:
         print(f"Вершину {maxVertex}, з максимальним НВ, можна зіставити "
               f"з вершинами " + Graph.stringFormat(f"{self.maxSubs[maxVertex]}", '{', '}'))
 
-  '''
-  Formation of lists of possible mappings for initial vertices
-  '''
-
   def makeMaxVariants(self):
+    """
+    Formation of lists of possible mappings for initial vertices
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     for maxV in self.maxSubs:
       for maxSub in self.maxSubs[maxV]:
         partSub = {maxV: [maxSub]}
@@ -359,11 +461,11 @@ class Analysis:
         for vToFind in otherVertexs:
           if vToFind != maxV:
             possibleSubs = list(
-                filter(lambda v:
-                       self.graph1.hd[vToFind][0] <= self.graph2.hd[v][0]
-                       and self.graph1.hd[vToFind][1] <= self.graph2.hd[v][1]
-                       and v not in partSub[maxV],
-                       self.graph2.graph[maxSub])
+              filter(lambda v:
+                     self.graph1.hd[vToFind][0] <= self.graph2.hd[v][0]
+                     and self.graph1.hd[vToFind][1] <= self.graph2.hd[v][1]
+                     and v not in partSub[maxV],
+                     self.graph2.graph[maxSub])
             )
             if len(possibleSubs) == 0:
               break
@@ -371,11 +473,16 @@ class Analysis:
             if vToFind == otherVertexs[-1]:
               self.maxVariants.append(partSub)
 
-  '''
-  Finding partial substitutions that satisfy condition B of Theorem 1
-  '''
-
   def makePartialSubs(self):
+    """
+    Finding partial substitutions that satisfy condition B of Theorem 1
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     partSubs = []
     for var in self.maxVariants:
       self.findCombCondB(var, partSubs, {})
@@ -387,11 +494,16 @@ class Analysis:
         self.printSub(sub)
         print()
 
-  '''
-  Generate lists of possible mappings for the remaining vertices
-  '''
-
   def makePartialVariants(self):
+    """
+    Generate lists of possible mappings for the remaining vertices
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     for sub in self.partialSubs:
       valuesToCheck = sub.values()
       sub = dict(map(lambda kv: (kv[0], [kv[1]]), sub.items()))
@@ -427,22 +539,31 @@ class Analysis:
       if len(sub.keys()) == len(self.graph1.graph.keys()):
         self.partialVariants.append(sub)
 
-  '''
-  Finding the resulting substitutions that satisfy condition B of Theorem 1
-  '''
-
   def makeCompleteSubs(self):
+    """
+    Finding the resulting substitutions that satisfy condition B of Theorem 1
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     completeSubs = []
     for var in self.partialVariants:
       self.findCombCondB(var, completeSubs, {})
     self.completeSubs = completeSubs
 
-  '''
-  Step-by-step implementation of the algorithm for analyzing the 
-  isomorphic embedding of two directed graphs
-  '''
-
   def algorithm(self):
+    """
+    Step-by-step implementation of the algorithm for analyzing the isomorphic embedding of two directed graphs
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+
+    """
     output = [[]]
     self.makeRecord(
       output[0],
@@ -531,11 +652,21 @@ class Analysis:
       return 1
 
   '''
-  Function that controls the analysis and returns its result.
-  (0 - graphs are isomorphically embedded; 1, 2 and 3 - graphs are not  isomorphically embedded)
+  
   '''
 
   def makeAnalysis(self):
+    """
+    Function that controls the analysis and returns its result.
+
+    Args:
+      Uses class attributes: self.graph
+
+    Returns:
+      analysisResult (int): The result of the analysis (
+      0 - graphs are isomorphically embedded;
+      1, 2 and 3 - graphs are not  isomorphically embedded )
+    """
     self.clear()
     startTime = time.time()
     isomorphicCheck = False
@@ -560,12 +691,12 @@ class Analysis:
 
       if self.analysisResult == 0:
         if self.todoPDF or self.printDetails:
-            self.makeRecord(
-                self.output[-1][-1],
-                [f"The graphs {self.graph1.fullName} and {self.graph2.fullName} "
-                 f"are isomorphic"],
-                [f"Графи {self.graph1.fullName} і {self.graph2.fullName} ізоморфні"]
-            )
+          self.makeRecord(
+            self.output[-1][-1],
+            [f"The graphs {self.graph1.fullName} and {self.graph2.fullName} "
+             f"are isomorphic"],
+            [f"Графи {self.graph1.fullName} і {self.graph2.fullName} ізоморфні"]
+          )
     else:
       self.analysisResult = self.algorithm()
 
@@ -587,4 +718,12 @@ class Analysis:
 
 
 if __name__ == '__main__':
-  pass
+  testGraph = {
+   "x1": ["x2"],
+   "x2": ["x1", "x4"],
+   "x3": ["x2", "x3", "x5"],
+   "x4": ["x1"],
+   "x5": ["x2", "x5"]
+  }
+  g1 = Graph(testGraph, "G", "V", "E")
+  print()
