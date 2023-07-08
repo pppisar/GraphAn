@@ -1,3 +1,5 @@
+import numpy
+
 import graphviz as gviz
 
 from borb.pdf import Document
@@ -14,17 +16,14 @@ from PIL import Image as ImgReader
 from math import ceil
 import time
 
-from data import *
 
 '''
-(Eng) Class that contains all the information about a given graph    |
----   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-(Укр) Клас, який містить всю інформацію щодо заданого графа          |
+Class that contains all the information about a given graph
 '''
 
 
 class Graph:
-  def __init__(self, graph, gSymbol, vSymbol, eSymbol):
+  def __init__(self, graph: dict, gSymbol: str, vSymbol: str, eSymbol: str):
     self.graph: dict = graph
     self.size: int = len(graph)
     self.name: str = gSymbol
@@ -35,11 +34,7 @@ class Graph:
     self.matrix: list = []
 
   '''
-  (Eng) A method that calculates the outdegrees| 
-  and indegrees of a given graph               |
-  ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод, який розраховує напівстпені     |
-  виходу та входу заданого графа               |
+  A method that calculates the outdegrees and indegrees of a given graph
   '''
 
   def countHalfDegrees(self):
@@ -53,9 +48,7 @@ class Graph:
     return hd
 
   '''
-  (Eng) A method that formats a string to display information correctly      |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод, який форматувє строку для коректного зображення інформації    |
+  A method that formats a string to display information correctly
   '''
 
   @staticmethod
@@ -63,11 +56,8 @@ class Graph:
     return line.replace('[', r1).replace(']', r2).replace("'", "")
 
   '''
-  (Eng) The method that prints the calculated table of outdegrees      |
-  and indegrees using adjacency lists representing the given graph     |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод, який друкує обраховану таблицю напівступенів            |
-  із списками суміжності, якими заданий граф                           |
+  The method that prints the calculated table of outdegrees 
+  and indegrees using adjacency lists representing the given graph
   '''
 
   def printHalfDegreesTable(self, output, todoPDF, printDetails):
@@ -87,9 +77,7 @@ class Graph:
                       self.stringFormat(f"{self.graph[vertex]}", '{', '}'))
 
   '''
-  (Eng) A method that generates a graphical representation of a given graph  |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод, який формує графічне представлення заданого графа             |
+  A method that generates a graphical representation of a given graph
   '''
 
   def buildGraphImage(self):
@@ -109,7 +97,6 @@ class Graph:
     except:
       return False
 
-
   def makeMatrix(self):
     for vrtxEdges in self.graph.values():
       newMatrixLine = []
@@ -124,24 +111,16 @@ class Graph:
     print()
 
 
-
 '''
-(Eng) An analysis class that implements all the steps of |
-the isomorphic embedding analysis algorithm              |
----   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-(Укр) Клас аналізу, в якому імплетовано всі кроки        |
-алгоритму аналізу ізомофрного вкладення                  |
+An analysis class that implements all the steps of the isomorphic embedding analysis algorithm
 '''
 
 
 class Analysis:
-  def __init__(self, graph1, graph2,
-               fileName=None, todoPDF=False, printDetails=False):
+  def __init__(self, graph1: Graph, graph2: Graph, fileName: str = None):
     self.graph1: Graph = graph1
     self.graph2: Graph = graph2
     self.fileName: str = fileName
-    self.todoPDF: bool = todoPDF
-    self.printDetails: bool = printDetails
     self.output: list = [[], []]
     self.maxSubs: dict = {}
     self.maxVariants: list = []
@@ -152,9 +131,7 @@ class Analysis:
     self.analysisTime: float = 0
 
   '''
-  (Eng) Resetting attributes before performing a new analysis                |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Скидання атрибутів, що проводиться перед проведенням нового аналізу  |
+  Resetting attributes before performing a new analysis
   '''
 
   def clear(self):
@@ -168,9 +145,7 @@ class Analysis:
     self.analysisTime = 0
 
   '''
-  (Eng) Generating a report in PDF format with the results of the analysis   |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Формування звіту в форматі PDF з результатами зробленого аналізу     |
+  Generating a report in PDF format with the results of the analysis
   '''
 
   def makePDF(self):
@@ -182,12 +157,12 @@ class Analysis:
 
     img = ImgReader.open(f"pngs/{self.graph1.fullName}.png")
     (w, h) = img.size
-    if (h > 660):
-      w = int(w * 660 / h)
-      h = 660
-    if (w > 470):
-      h = int(h * 470 / w)
-      w = 470
+    if h > 660:
+        w = int(w * 660 / h)
+        h = 660
+    if w > 470:
+        h = int(h * 470 / w)
+        w = 470
     layout1.add(Image(Path(f"pngs/{self.graph1.fullName}.png"),
                       width=w, height=h))
 
@@ -200,10 +175,10 @@ class Analysis:
 
     img = ImgReader.open(f"pngs/{self.graph2.fullName}.png")
     (w, h) = img.size
-    if (h > 660):
+    if h > 660:
       w = int(w * 660 / h)
       h = 660
-    if (w > 470):
+    if w > 470:
       h = int(h * 470 / w)
       w = 470
     layout2.add(Image(Path(f"pngs/{self.graph2.fullName}.png"),
@@ -227,12 +202,12 @@ class Analysis:
                                         number_of_rows=numRow)
           for col in range(0, numCol - 1, 13):
             for pos in range(col, col + 13, 1):
-              if (pos < numCol):
+              if pos < numCol:
                 table.add(Paragraph(line[1][pos], font="Courier"))
               else:
                 table.add(Paragraph('', font="Courier"))
             for pos in range(col, col + 13, 1):
-              if (pos < numCol):
+              if pos < numCol:
                 table.add(Paragraph(line[2][pos], font="Courier"))
               else:
                 table.add(Paragraph('', font="Courier"))
@@ -248,9 +223,7 @@ class Analysis:
     print(f"Звіт збережено до файлу {self.fileName}.pdf")
 
   '''
-  (Eng) Function for displaying a substitution to the console.   |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Функція для вивиедення підстановки до консолі.           |
+  Function for displaying a substitution to the console
   '''
 
   @staticmethod
@@ -259,9 +232,7 @@ class Analysis:
     print('\t'.join(sub.values()))
 
   '''
-  (Eng) A function for outputting text to the console and a pdf report.|
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Функція для виводу тексту в консоль та pdf звіт.               |
+  A function for outputting text to the console and a pdf report
   '''
 
   def makeRecord(self, output, engText, ukrText):
@@ -273,11 +244,8 @@ class Analysis:
         print(text)
 
   '''
-  (Eng) Function that checks the possibility of finding a combination (one)  |
-  without repeating vertices that satisfies condition A of Theorem 1.        |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Функція, яка перевіряє можливість находження комбінації (однієї)     |
-  без повторення вершин, яка задовольняє умові А теореми 1.                  |
+  Function that checks the possibility of finding a combination (one)
+  without repeating vertices that satisfies condition A of Theorem 1
   '''
 
   def findCombCondA(self, variants, current):
@@ -297,9 +265,7 @@ class Analysis:
     return False
 
   '''
-  (Eng) Verification of condition A of Theorem 1     |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Перевірка виконання умови А теореми 1        |
+  Verification of condition A of Theorem 1
   '''
 
   def checkCondA(self):
@@ -316,33 +282,26 @@ class Analysis:
     return self.findCombCondA(possiblevertexs, {})
 
   '''
-  (Eng) Verification of (partial) substitution of condition B of Theorem 1  |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---  ---|
-  (Укр) Перевірка виконання (частковою) підстановкою умови B теореми 1      |
+  Verification of (partial) substitution of condition B of Theorem 1
   '''
 
   def conditionB(self, sub):
     for vertex in sub.keys():
       for nextvertex in self.graph1.graph[vertex]:
         if nextvertex in sub.keys() \
-                and sub[nextvertex] not in self.graph2.graph[sub[vertex]]:
+            and sub[nextvertex] not in self.graph2.graph[sub[vertex]]:
           if self.printDetails:
             print(f"При перевірці умови B теореми 1 підстановки")
             self.printSub(sub)
             print("виявилено порушення:")
-            print(
-              f"{nextvertex} є F{vertex}={self.graph1.graph[vertex]}, "
-              f"але {sub[nextvertex]} ~є P{sub[vertex]}="
-              f"{self.graph2.graph[sub[vertex]]}\n")
+            print(f"{nextvertex} є F{vertex}={self.graph1.graph[vertex]}, "
+                  f"але {sub[nextvertex]} ~є P{sub[vertex]}="
+                  f"{self.graph2.graph[sub[vertex]]}\n")
           return False
     return True
 
   '''
-  (Eng) Finding all combinations without repetition  |
-  that satisfy condition B of Theorem 1              |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Знаходження всіх комбінацій без повторення,  | 
-  які задовольняють умові B теореми 1                |
+  Finding all combinations without repetition that satisfy condition B of Theorem 1
   '''
 
   def findCombCondB(self, variants, res, current):
@@ -361,11 +320,7 @@ class Analysis:
         break
 
   '''
-  (Eng) Mapping of vertices with the largest output  |
-  half-degree according to condition A of Theorem 1  |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Зіставлення вершин із найбільшим             |
-  напівступенем виходу згідно умові А теореми 1      |
+  Mapping of vertices with the largest output half-degree according to condition A of Theorem 1
   '''
 
   def makeMaxSub(self):
@@ -373,28 +328,25 @@ class Analysis:
                                            key=lambda elem: elem[1][0],
                                            reverse=True)}
     key = list(
-      filter(lambda v:
-             hdG1SortOut[v][0] == hdG1SortOut[list(hdG1SortOut.keys())[0]][0],
-             hdG1SortOut)
+        filter(lambda v:
+               hdG1SortOut[v][0] == hdG1SortOut[list(hdG1SortOut.keys())[0]][0],
+               hdG1SortOut)
     )
     for vertex1 in key:
       for vertex2 in self.graph2.hd:
         if self.graph2.hd[vertex2][0] >= self.graph1.hd[vertex1][0] and \
-                self.graph2.hd[vertex2][1] >= self.graph1.hd[vertex1][1]:
+            self.graph2.hd[vertex2][1] >= self.graph1.hd[vertex1][1]:
           if vertex1 in self.maxSubs:
             self.maxSubs[vertex1].append(vertex2)
           else:
             self.maxSubs[vertex1] = [vertex2]
-    if (self.printDetails):
+    if self.printDetails:
       for maxVertex in self.maxSubs:
         print(f"Вершину {maxVertex}, з максимальним НВ, можна зіставити "
-              f"з вершинами " +
-              Graph.stringFormat(f"{self.maxSubs[maxVertex]}", '{', '}'))
+              f"з вершинами " + Graph.stringFormat(f"{self.maxSubs[maxVertex]}", '{', '}'))
 
   '''
-  (Eng) Formation of lists of possible mappings for initial vertices   |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Формування списків можливих зіставлень для початкових вершин   |
+  Formation of lists of possible mappings for initial vertices
   '''
 
   def makeMaxVariants(self):
@@ -407,11 +359,11 @@ class Analysis:
         for vToFind in otherVertexs:
           if vToFind != maxV:
             possibleSubs = list(
-              filter(lambda v:
-                     self.graph1.hd[vToFind][0] <= self.graph2.hd[v][0]
-                     and self.graph1.hd[vToFind][1] <= self.graph2.hd[v][1]
-                     and v not in partSub[maxV],
-                     self.graph2.graph[maxSub])
+                filter(lambda v:
+                       self.graph1.hd[vToFind][0] <= self.graph2.hd[v][0]
+                       and self.graph1.hd[vToFind][1] <= self.graph2.hd[v][1]
+                       and v not in partSub[maxV],
+                       self.graph2.graph[maxSub])
             )
             if len(possibleSubs) == 0:
               break
@@ -420,11 +372,7 @@ class Analysis:
               self.maxVariants.append(partSub)
 
   '''
-  (Eng) Finding partial substitutions that     | 
-  satisfy condition B of Theorem 1             |
-  ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Знаходження часткових підстановок, що  |
-  задовольняють умові B теореми 1              |
+  Finding partial substitutions that satisfy condition B of Theorem 1
   '''
 
   def makePartialSubs(self):
@@ -440,9 +388,7 @@ class Analysis:
         print()
 
   '''
-  (Eng) Generate lists of possible mappings for the remaining vertices |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Формування списків можливих зіставлень для решти вершин        |
+  Generate lists of possible mappings for the remaining vertices
   '''
 
   def makePartialVariants(self):
@@ -467,7 +413,7 @@ class Analysis:
                          self.graph2.graph[vertex3])
                 )
               break
-          if possibleAdd == []:
+          if not possibleAdd:
             possibleAdd = list(
               filter(lambda v3:
                      self.graph1.hd[vertex1][0] <= self.graph2.hd[v3][0]
@@ -482,11 +428,7 @@ class Analysis:
         self.partialVariants.append(sub)
 
   '''
-  (Eng) Finding the resulting substitutions    |
-  that satisfy condition B of Theorem 1        |
-  ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Знаходження результуючих підстановок,  |
-  що задовольняють умову B теореми 1           |
+  Finding the resulting substitutions that satisfy condition B of Theorem 1
   '''
 
   def makeCompleteSubs(self):
@@ -496,11 +438,8 @@ class Analysis:
     self.completeSubs = completeSubs
 
   '''
-  (Eng) Step-by-step implementation of the algorithm for analyzing the |
-  isomorphic embedding of two directed graphs                          |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Покрокове виконання алгоритму аналізу ізоморфного вкладення    |
-  двох орієнтованих графів                                             |
+  Step-by-step implementation of the algorithm for analyzing the 
+  isomorphic embedding of two directed graphs
   '''
 
   def algorithm(self):
@@ -520,8 +459,7 @@ class Analysis:
         self.makePartialVariants()
         self.makeCompleteSubs()
         if len(self.completeSubs) != 0:
-          if len(self.completeSubs) != 0 and \
-                  (self.printDetails or self.todoPDF):
+          if len(self.completeSubs) != 0 and (self.printDetails or self.todoPDF):
             self.makeRecord(
               output[0],
               ["The resulting substitutions that satisfy "
@@ -593,13 +531,8 @@ class Analysis:
       return 1
 
   '''
-  (Eng) Function that controls the analysis and returns its result.    |
-  (0 - graphs are isomorphically embedded;                             |
-  1, 2 and 3 - graphs are not  isomorphically embedded)                |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Функція яка керує аналізом і повертає його результат.          |
-  (0 - графи ізоморфно вкладаються;                                    |
-  1, 2 та 3 - графи ізоморфно не вкладаються)                          |
+  Function that controls the analysis and returns its result.
+  (0 - graphs are isomorphically embedded; 1, 2 and 3 - graphs are not  isomorphically embedded)
   '''
 
   def makeAnalysis(self):
@@ -627,12 +560,12 @@ class Analysis:
 
       if self.analysisResult == 0:
         if self.todoPDF or self.printDetails:
-          self.makeRecord(
-            self.output[-1][-1],
-            [f"The graphs {self.graph1.fullName} and {self.graph2.fullName} "
-             f"are isomorphic"],
-            [f"Графи {self.graph1.fullName} і {self.graph2.fullName} ізоморфні"]
-          )
+            self.makeRecord(
+                self.output[-1][-1],
+                [f"The graphs {self.graph1.fullName} and {self.graph2.fullName} "
+                 f"are isomorphic"],
+                [f"Графи {self.graph1.fullName} і {self.graph2.fullName} ізоморфні"]
+            )
     else:
       self.analysisResult = self.algorithm()
 
@@ -654,9 +587,4 @@ class Analysis:
 
 
 if __name__ == '__main__':
-  g1 = Graph(dodatok1["GAL2"], 'G', 'X', 'F')
-  g1.makeMatrix()
-  g2 = Graph(dodatok1["GAL1"], 'H', 'Y', 'P')
-  g2.makeMatrix()
-  An1 = Analysis(g1, g2, "test", True, True)
-  An1.makeAnalysis()
+  pass

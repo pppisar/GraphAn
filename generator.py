@@ -4,12 +4,8 @@ from math import comb, ceil
 from GraphAn import Graph, Analysis
 
 '''
-(Eng) A class that is responsible for creating a supergraph    |
-and subgraph in accordance with the specified condition of     |
-of isomorphic embedding                                        |
----   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-(Укр) Клас, який відповідає за створення надграфа та підграфа  |
-відповідно до заданої умови ізоморфного вкладення              |
+A class that is responsible for creating a supergraph 
+and subgraph in accordance with the specified condition of isomorphic embedding
 '''
 
 class Generator:
@@ -22,9 +18,7 @@ class Generator:
     self.embeddingCondition: bool = None
 
   '''
-  (Eng) Method for getting a value of type Int from the user     |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод для отримання від користувача значення типу Int    |
+  Method for getting a value of type Int from the user
   '''
 
   @staticmethod
@@ -38,9 +32,7 @@ class Generator:
           return int(inp)
 
   '''
-  (Eng) Method for getting a one-character string from the user        |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод для отримання односимвольного рядка від користувача      |
+  Method for getting a one-character string from the user
   '''
 
   @staticmethod
@@ -50,11 +42,8 @@ class Generator:
       if inp.isalpha() and len(inp) == 1:
         return inp.upper()
 
-
   '''
-  (Eng) Method for converting user input to a value of type Bool             |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод для конвертації рядка, що було введено, до значення типу Bool  |
+  Method for converting user input to a value of type Bool
   '''
 
   @staticmethod
@@ -67,10 +56,8 @@ class Generator:
         return False
 
   '''
-    (Eng) Method for generating the number of incident edges for each vertex  |
-    ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---  ---|
-    (Укр) Метод генерації кількості інцедентних ребер для кожної вершини      |
-    '''
+  Method for generating the number of incident edges for each vertex
+  '''
 
   def generateEdges(self, size, nullVertex):
     totalSum = comb(size, 2)
@@ -103,9 +90,7 @@ class Generator:
     self.edgesCount = edgesCount
 
   '''
-  (Eng) The method responsible for generating of the supergraph  |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод, що відповідає за формування надграфа              |
+  The method responsible for generating of the supergraph
   '''
 
   def generateSupergraph(self, size, nullVertex, gSymbol, vSymbol, eSymbol):
@@ -115,17 +100,13 @@ class Generator:
       graph[f"{vSymbol.lower()}{i}"] = []
       while len(graph[f"{vSymbol.lower()}{i}"]) != self.edgesCount[i-1]:
         vertex = f"{vSymbol.lower()}{randint(1, size)}"
-        if (vertex not in graph[f"{vSymbol.lower()}{i}"]):
+        if vertex not in graph[f"{vSymbol.lower()}{i}"]:
           graph[f"{vSymbol.lower()}{i}"].append(vertex)
     self.supergraph = Graph(graph,
                             gSymbol.upper(), vSymbol.upper(), eSymbol.upper())
 
   '''
-  (Eng) A method that creates a substitution according     |
-  to the generated set of vertices to be removed.          |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод, що формує відображення відповідно до        |
-  згенерованої множини вершин, що потрібно видалити        |
+  A method that creates a substitution according to the generated set of vertices to be removed.
   '''
 
   def cutGraph(self, size, vSymbol):
@@ -140,11 +121,7 @@ class Generator:
     self.cuttingSub = sub
 
   '''
-  (Eng) A method that additionally truncates the set of edges          |
-  (used if the subgraph must be isomorphically nested)                 |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод, який додатково усікає множину ребер підграфа            |
-  (використовується у випадку, якщо підграф ізоморфно вкладається)     |
+  A method that additionally truncates the set of edges  (used if the subgraph must be isomorphically nested)
   '''
 
   def reduceGraph(self, gSymbol, vSymbol, eSymbol):
@@ -165,11 +142,7 @@ class Generator:
                           gSymbol.upper(), vSymbol.upper(), eSymbol.upper())
 
   '''
-  (Eng) A method that adds edges to the formed subgraph to violate     |
-  condition B of Theorem 1 in the resulting substitutions              |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод, що додає ребра сформованому підграфу для порушення      |
-  умови B теореми 1 в отриманих підстановках                           |
+  A method that adds edges to the formed subgraph to violate condition B of Theorem 1 in the resulting substitutions
   '''
 
   def enlargeGraph(self, gSymbol, vSymbol, eSymbol):
@@ -200,11 +173,7 @@ class Generator:
         return 1
 
   '''
-  (Eng) The method responsible for forming a subgraph| 
-  according to the isomorphic embedding condition    |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод, відповідальний за формування підграфа |
-  відповідно до умови ізоморфного вкладення          |
+  The method responsible for forming a subgraph according to the isomorphic embedding condition
   '''
 
   def generateSubgraph(self, size, gSymbol, vSymbol, eSymbol):
@@ -215,11 +184,7 @@ class Generator:
       self.enlargeGraph(gSymbol, vSymbol, eSymbol)
 
   '''
-  (Eng) A method that automatically generates a variant                |
-  (supergraph and subgraph) and makes a PDF report of the analysis     |
-  ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---   ---|
-  (Укр) Метод, який автоматично формує варіант (надграф і підграф)     |
-  та робить PDF звіт аналізу по згенерованим графам                    |
+  A method that automatically generates a variant (supergraph and subgraph) and makes a PDF report of the analysis
   '''
 
   def createVariant(self):
@@ -247,6 +212,7 @@ class Generator:
                              fileName, True, False)
     self.analysis.makeAnalysis()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
   var1 = Generator()
   var1.createVariant()
