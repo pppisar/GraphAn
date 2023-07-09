@@ -390,9 +390,10 @@ class Analysis:
     possibleVertexes = {}
     for vertexG1 in range(self.__graph1.size):
       possibleVertexes[vertexG1] = np.uint32(list(filter(lambda vertexG2:
-                                                        self.__graph1.hd[vertexG1][0] <= self.__graph2.hd[vertexG2][0] and
-                                                        self.__graph1.hd[vertexG1][1] <= self.__graph2.hd[vertexG2][1],
-                                                        range(self.__graph2.size))))
+                                                         self.__graph1.hd[vertexG1][0] <= self.__graph2.hd[vertexG2][
+                                                           0] and
+                                                         self.__graph1.hd[vertexG1][1] <= self.__graph2.hd[vertexG2][1],
+                                                         range(self.__graph2.size))))
       if possibleVertexes[vertexG1].size == 0:
         return False
     return self.__findCombCondA(possibleVertexes, {})
@@ -408,8 +409,8 @@ class Analysis:
 
     """
     for vertex in sub.keys():
-      for nextVertex in np.argwhere(self.__graph1.graph[vertex] == 1):
-        if nextVertex in sub.keys() and sub[nextVertex] not in np.argwhere(self.__graph2.graph[sub[vertex]] == 1):
+      for nextVertex in np.argwhere(self.__graph1.graph[vertex] == 1)[:, 0]:
+        if nextVertex in sub.keys() and sub[nextVertex] not in np.argwhere(self.__graph2.graph[sub[vertex]] == 1)[:, 0]:
           return False
     return True
 
@@ -453,8 +454,8 @@ class Analysis:
                                  np.argwhere(self.__graph1.hd == hdG1SortOut[-1][0]))))[:, 0]
     maxSubs = {}
     for vertex in keys:
-      maxSubs[vertex] = np.argwhere((self.__graph2.hd[:, 0] < self.__graph1.hd[vertex, 0]) &
-                                    (self.__graph2.hd[:, 1] < self.__graph1.hd[vertex, 1]))
+      maxSubs[vertex] = np.uint32(np.argwhere((self.__graph2.hd[:, 0] >= self.__graph1.hd[vertex, 0]) &
+                                              (self.__graph2.hd[:, 1] >= self.__graph1.hd[vertex, 1])))[:, 0]
     return maxSubs
 
   def __makeMaxVariants(self, maxSubs: dict) -> list:
@@ -471,14 +472,14 @@ class Analysis:
     for maxVertex in maxSubs:
       for maxSub in maxSubs[maxVertex]:
         partSub = {maxVertex: np.uint32([maxSub])}
-        otherVertexes = np.argwhere(self.__graph1.graph[maxVertex] == 1)
+        otherVertexes = np.uint32(np.argwhere(self.__graph1.graph[maxVertex] == 1)[:, 0])
         for nextVertex in otherVertexes:
           if nextVertex != maxVertex:
             possibleSubs = np.uint32(list(filter(lambda vertexG2:
                                                  self.__graph1.hd[nextVertex][0] <= self.__graph2.hd[vertexG2][0] and
                                                  self.__graph1.hd[nextVertex][1] <= self.__graph2.hd[vertexG2][1] and
                                                  vertexG2 not in partSub[maxVertex],
-                                                 np.argwhere(self.__graph2.graph[maxSub] == 1))))
+                                                 np.argwhere(self.__graph2.graph[maxSub] == 1)[:, 0])))
             if possibleSubs.size == 0:
               break
             partSub[nextVertex] = possibleSubs
@@ -513,28 +514,30 @@ class Analysis:
     """
     partialVariants = list()
     for sub in partialSubs:
-      keysToCheck = np.uint32(sub.keys())
-      valuesToCheck = np.uint32(sub.values())
-      sub = dict(map(lambda pair: (pair[0], np.uint32([pair[1]])), sub.items()))
-      for nextVertex in np.delete(np.uint32(range(self.__graph1.size)), np.uint32(sub.keys())):
-        vertexesWithTransition = np.delete(np.argwhere(self.__graph1.graph[:, nextVertex] == 1), keysToCheck)
-        possibleAdd = np.delete(np.uint32(list(filter(lambda vertex:
-                                                      self.__graph2.hd[sub[vertex], 0] >= self.__graph1.hd[
-                                                        nextVertex, 0] and
-                                                      self.__graph2.hd[sub[vertex], 1] >= self.__graph1.hd[
-                                                        nextVertex, 1],
-                                                      vertexesWithTransition))),
-                                valuesToCheck)
-        if possibleAdd.size == 0:
-          possibleAdd = np.delete(np.argwhere((self.__graph2.hd[:, 0] >= self.__graph1.hd[nextVertex, 0]) &
-                                              (self.__graph2.hd[:, 1] >= self.__graph1.hd[nextVertex, 1])),
+      keysToCheck = np.uint32(list(sub.keys()))
+      valuesToCheck = np.uint32(list(sub.values()))
+      subVariant = dict(map(lambda pair: (pair[0], np.uint32([pair[1]])), sub.items()))
+      for nextVertex in np.delete(np.uint32(range(self.__graph1.size)), keysToCheck):
+        vertexesWithTransition = np.uint32(np.intersect1d(np.argwhere(self.__graph1.graph[:, nextVertex] == 1)[:, 0],
+                                                          keysToCheck))
+        for vertexTo in vertexesWithTransition:
+          variants = np.setdiff1d(np.uint32(list(filter(lambda vertex:
+                                                        self.__graph2.hd[vertex, 0] >= self.__graph1.hd[
+                                                          nextVertex, 0] and
+                                                        self.__graph2.hd[vertex, 1] >= self.__graph1.hd[
+                                                          nextVertex, 1],
+                                                        np.argwhere(self.__graph2.graph[sub[vertexTo]] == 1)[:, 0]))),
+                                  valuesToCheck)
+        if variants.size == 0:
+          variants = np.setdiff1d(np.argwhere((self.__graph2.hd[:, 0] >= self.__graph1.hd[nextVertex, 0]) &
+                                              (self.__graph2.hd[:, 1] >= self.__graph1.hd[nextVertex, 1]))[:, 0],
                                   valuesToCheck)
 
-        if possibleAdd.size == 0:
+        if variants.size == 0:
           break
-        sub[nextVertex] = possibleAdd
-      if len(sub.keys()) == self.__graph1.size:
-        partialVariants.append(sub)
+        subVariant[nextVertex] = np.uint32(variants)
+      if len(subVariant.keys()) == self.__graph1.size:
+        partialVariants.append(subVariant)
     return partialVariants
 
   def __makeCompleteSubs(self, partialVariants):
@@ -574,14 +577,16 @@ class Analysis:
         partialVariants = self.__makePartialVariants(partialSubs)
         completeSubs = self.__makeCompleteSubs(partialVariants)
         if len(completeSubs) > 0:
+          self.completeSubs = completeSubs
           if self.__todoPDF:
+            pass
             # self.makeRecord(output[0], ["The resulting substitutions that satisfy condition B of Theorem 1:"])
-            outputSub = []
-            for index, sub in enumerate(self.completeSubs):
-              if self.__todoPDF:
-                outputSub.append([f"Substitution {index + 1}:",
-                                  list(sub.keys()),
-                                  list(sub.values())])
+            # outputSub = []
+            # for index, sub in enumerate(self.completeSubs):
+            #   if self.__todoPDF:
+            #     outputSub.append([f"Substitution {index + 1}:",
+            #                       list(sub.keys()),
+            #                       list(sub.values())])
             # if self.__todoPDF:
             #   output.append(outputSub)
             #   output.append([])
@@ -589,7 +594,7 @@ class Analysis:
             #     output[-1],
             #     [f"The graph {self.graph1.fullName} is isomorphically embedded in the graph {self.graph2.fullName}"])
             #   self.output.append(output)
-            return 0
+          return 0
         else:
           #   self.makeRecord(output[0],
           #                   [f"When trying to complete all possible substitutions, no option "
