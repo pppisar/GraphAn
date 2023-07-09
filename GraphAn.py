@@ -17,6 +17,21 @@ from math import ceil
 import time
 
 
+def readJSON(fileName: str) -> dict:
+  """
+  A function that reads a graph specified by adjacency lists from a JSON file
+  and converts it to a structure of type dictionary
+
+  Args:
+    fileName (str): Name of the JSON file
+
+  Returns:
+    Adjacency lists in dictionary view
+  """
+  # TODO: Reading of JSON File
+  pass
+
+
 class Graph:
   """
   Class that contains all the information about a given graph
@@ -55,12 +70,12 @@ class Graph:
       graph (dict): Adjacency lists defined with a dictionary
 
     Returns:
-      adjacencyMatrix (np.ndarray()): Graph adjacency matrix
+      adjacencyMatrix (np.ndarray): Graph adjacency matrix
     """
     transitionToNumber = dict()
 
     matrixSize = len(graph.keys())
-    adjacencyMatrix = np.zeros((matrixSize, matrixSize), dtype=int)
+    adjacencyMatrix = np.zeros((matrixSize, matrixSize), dtype=np.uint32)
 
     for index, vertex in enumerate(graph.keys()):
       self.transition[index] = vertex
@@ -81,7 +96,7 @@ class Graph:
     Returns:
       halfDegrees: The calculated table of outdegrees and indegrees
     """
-    halfDegrees = np.zeros((len(graph.keys()), 2), dtype=int)
+    halfDegrees = np.zeros((len(graph.keys()), 2), dtype=np.uint32)
 
     for index, vertex in enumerate(graph.keys()):
       hdOut = len(graph[vertex])
@@ -146,6 +161,29 @@ class Graph:
     g.render(filename=f"{self.fullName}", format="png", directory="pngs")
 
 
+class PDFCreator:
+  def __init__(self, fileName: str):
+    pass
+
+  def addImage(self, path: str):
+    pass
+
+  def addTable(self, table: list):
+    pass
+
+  def addLine(self, line: str):
+    pass
+
+  def addMultiLine(self, text: list):
+    pass
+
+  def addSubstitution(self, number: int, substitution: dict):
+    pass
+
+  def saveFile(self):
+    pass
+
+
 class Analysis:
   """
   An analysis class that implements all the steps of the isomorphic embedding analysis algorithm
@@ -160,29 +198,36 @@ class Analysis:
     graph2 (Graph): Graph representation using a numpy array
     fileName (str): Graph dimensionality
     output (list): Full name of the graph (including the set of vertices and edges)
-    maxSubs (dict): Name of the vertex set (Symbol by which it is denoted)
-    maxVariants (list): Name of the edges set (Symbol by which it is denoted)
-    partialSubs (list): Name of the edges set (Symbol by which it is denoted)
-    partialVariants (list): Name of the edges set (Symbol by which it is denoted)
     completeSubs (list): The calculated table of semi-powers, which is specified using a numpy array
     analysisResult (int):
     analysisResult (float):
   """
 
   def __init__(self, graph1: dict, graph2: dict, fileName: str = None):
-    self.graph1: Graph = Graph(graph1)
-    self.graph2: Graph = Graph(graph2)
-    self.fileName: str = fileName
-    self.output: list = [[], []]
-    self.maxSubs: dict = {}
-    self.maxVariants: list = []
-    self.partialSubs: list = []
-    self.partialVariants: list = []
+    self.__graph1: Graph = Graph(graph1, "G", "F", "E")
+    self.__graph2: Graph = Graph(graph2, "H", "P", "L")
+    self.__fileName: str = fileName
+    self.__todoPDF: bool = False if fileName is None else True
+
+    # self.output: list = [[], []]
+    # self.maxSubs: dict = {}
+    # self.maxVariants: list = []
+    # self.partialSubs: list = []
+    # self.partialVariants: list = []
+
     self.completeSubs: list = []
     self.analysisResult: int = 0
     self.analysisTime: float = 0
 
-  def clear(self):
+    if self.__todoPDF:
+      self.__graph1.buildGraphImage(graph1)
+      self.__graph2.buildGraphImage(graph2)
+
+      # TODO: Add images to the PDF file
+
+      # TODO: Add table of the outdegrees and indegrees to the PDF file
+
+  def __clear(self):
     """
     Resetting attributes before performing a new analysis
 
@@ -192,11 +237,6 @@ class Analysis:
     Returns:
 
     """
-    self.output = [[], []]
-    self.maxSubs = {}
-    self.maxVariants = []
-    self.partialSubs = []
-    self.partialVariants = []
     self.completeSubs = []
     self.analysisResult = 0
     self.analysisTime = 0
@@ -298,7 +338,7 @@ class Analysis:
     print('\t'.join(sub.keys()))
     print('\t'.join(sub.values()))
 
-  def makeRecord(self, output, engText, ukrText):
+  def makeRecord(self, output, text):
     """
     A function for outputting text to the console and a pdf report
 
@@ -308,14 +348,11 @@ class Analysis:
     Returns:
 
     """
-    if self.todoPDF:
-      for text in engText:
+    if self.__todoPDF:
+      for line in text:
         output.append(text)
-    if self.printDetails:
-      for text in ukrText:
-        print(text)
 
-  def findCombCondA(self, variants, current):
+  def __findCombCondA(self, variants, current):
     """
     Function that checks the possibility of finding a combination (one)
     without repeating vertices that satisfies condition A of Theorem 1
@@ -334,14 +371,13 @@ class Analysis:
         for j in variants[i]:
           if j not in current.values():
             current[i] = j
-            res = self.findCombCondA(variants, current)
-            if res:
+            if self.__findCombCondA(variants, current):
               return True
             current.pop(i)
         break
     return False
 
-  def checkCondA(self):
+  def __checkCondA(self):
     """
     Verification of condition A of Theorem 1
 
@@ -351,19 +387,17 @@ class Analysis:
     Returns:
 
     """
-    possiblevertexs = {}
-    for vertex1 in self.graph1.hd:
-      possiblevertexs[vertex1] = list(
-        filter(lambda vertex2:
-               self.graph1.hd[vertex1][0] <= self.graph2.hd[vertex2][0]
-               and self.graph1.hd[vertex1][1] <= self.graph2.hd[vertex2][1],
-               self.graph2.hd)
-      )
-      if len(possiblevertexs[vertex1]) == 0:
+    possibleVertexes = {}
+    for vertexG1 in range(self.__graph1.size):
+      possibleVertexes[vertexG1] = np.uint32(list(filter(lambda vertexG2:
+                                                        self.__graph1.hd[vertexG1][0] <= self.__graph2.hd[vertexG2][0] and
+                                                        self.__graph1.hd[vertexG1][1] <= self.__graph2.hd[vertexG2][1],
+                                                        range(self.__graph2.size))))
+      if possibleVertexes[vertexG1].size == 0:
         return False
-    return self.findCombCondA(possiblevertexs, {})
+    return self.__findCombCondA(possibleVertexes, {})
 
-  def conditionB(self, sub):
+  def __conditionB(self, sub):
     """
     Verification of (partial) substitution of condition B of Theorem 1
 
@@ -374,20 +408,12 @@ class Analysis:
 
     """
     for vertex in sub.keys():
-      for nextvertex in self.graph1.graph[vertex]:
-        if nextvertex in sub.keys() \
-            and sub[nextvertex] not in self.graph2.graph[sub[vertex]]:
-          if self.printDetails:
-            print(f"При перевірці умови B теореми 1 підстановки")
-            self.printSub(sub)
-            print("виявилено порушення:")
-            print(f"{nextvertex} є F{vertex}={self.graph1.graph[vertex]}, "
-                  f"але {sub[nextvertex]} ~є P{sub[vertex]}="
-                  f"{self.graph2.graph[sub[vertex]]}\n")
+      for nextVertex in np.argwhere(self.__graph1.graph[vertex] == 1):
+        if nextVertex in sub.keys() and sub[nextVertex] not in np.argwhere(self.__graph2.graph[sub[vertex]] == 1):
           return False
     return True
 
-  def findCombCondB(self, variants, res, current):
+  def __findCombCondB(self, variants, res, current):
     """
     Finding all combinations without repetition that satisfy condition B of Theorem 1
 
@@ -397,7 +423,7 @@ class Analysis:
     Returns:
 
     """
-    if len(current) == len(variants) and self.conditionB(current):
+    if len(current) == len(variants) and self.__conditionB(current):
       res.append(current.copy())
       return
 
@@ -406,12 +432,12 @@ class Analysis:
         for j in variants[i]:
           if j not in current.values():
             current[i] = j
-            if self.conditionB(current):
-              self.findCombCondB(variants, res, current)
+            if self.__conditionB(current):
+              self.__findCombCondB(variants, res, current)
             current.pop(i)
         break
 
-  def makeMaxSub(self):
+  def __makeMaxSub(self) -> dict:
     """
     Mapping of vertices with the largest output half-degree according to condition A of Theorem 1
 
@@ -421,28 +447,17 @@ class Analysis:
     Returns:
 
     """
-    hdG1SortOut = {k: v for k, v in sorted(self.graph1.hd.items(),
-                                           key=lambda elem: elem[1][0],
-                                           reverse=True)}
-    key = list(
-      filter(lambda v:
-             hdG1SortOut[v][0] == hdG1SortOut[list(hdG1SortOut.keys())[0]][0],
-             hdG1SortOut)
-    )
-    for vertex1 in key:
-      for vertex2 in self.graph2.hd:
-        if self.graph2.hd[vertex2][0] >= self.graph1.hd[vertex1][0] and \
-            self.graph2.hd[vertex2][1] >= self.graph1.hd[vertex1][1]:
-          if vertex1 in self.maxSubs:
-            self.maxSubs[vertex1].append(vertex2)
-          else:
-            self.maxSubs[vertex1] = [vertex2]
-    if self.printDetails:
-      for maxVertex in self.maxSubs:
-        print(f"Вершину {maxVertex}, з максимальним НВ, можна зіставити "
-              f"з вершинами " + Graph.stringFormat(f"{self.maxSubs[maxVertex]}", '{', '}'))
+    hdG1SortOut = self.__graph1.hd[np.argsort(self.__graph1.hd[:, 0])]
+    keys = np.uint32(list(filter(lambda position:
+                                 position[1] == 0,
+                                 np.argwhere(self.__graph1.hd == hdG1SortOut[-1][0]))))[:, 0]
+    maxSubs = {}
+    for vertex in keys:
+      maxSubs[vertex] = np.argwhere((self.__graph2.hd[:, 0] < self.__graph1.hd[vertex, 0]) &
+                                    (self.__graph2.hd[:, 1] < self.__graph1.hd[vertex, 1]))
+    return maxSubs
 
-  def makeMaxVariants(self):
+  def __makeMaxVariants(self, maxSubs: dict) -> list:
     """
     Formation of lists of possible mappings for initial vertices
 
@@ -452,28 +467,26 @@ class Analysis:
     Returns:
 
     """
-    for maxV in self.maxSubs:
-      for maxSub in self.maxSubs[maxV]:
-        partSub = {maxV: [maxSub]}
-        otherVertexs = list(filter(lambda vertex:
-                                   vertex != maxV,
-                                   self.graph1.graph[maxV]))
-        for vToFind in otherVertexs:
-          if vToFind != maxV:
-            possibleSubs = list(
-              filter(lambda v:
-                     self.graph1.hd[vToFind][0] <= self.graph2.hd[v][0]
-                     and self.graph1.hd[vToFind][1] <= self.graph2.hd[v][1]
-                     and v not in partSub[maxV],
-                     self.graph2.graph[maxSub])
-            )
-            if len(possibleSubs) == 0:
+    maxVariants = list()
+    for maxVertex in maxSubs:
+      for maxSub in maxSubs[maxVertex]:
+        partSub = {maxVertex: np.uint32([maxSub])}
+        otherVertexes = np.argwhere(self.__graph1.graph[maxVertex] == 1)
+        for nextVertex in otherVertexes:
+          if nextVertex != maxVertex:
+            possibleSubs = np.uint32(list(filter(lambda vertexG2:
+                                                 self.__graph1.hd[nextVertex][0] <= self.__graph2.hd[vertexG2][0] and
+                                                 self.__graph1.hd[nextVertex][1] <= self.__graph2.hd[vertexG2][1] and
+                                                 vertexG2 not in partSub[maxVertex],
+                                                 np.argwhere(self.__graph2.graph[maxSub] == 1))))
+            if possibleSubs.size == 0:
               break
-            partSub[vToFind] = possibleSubs
-            if vToFind == otherVertexs[-1]:
-              self.maxVariants.append(partSub)
+            partSub[nextVertex] = possibleSubs
+            if nextVertex == otherVertexes[-1]:
+              maxVariants.append(partSub)
+    return maxVariants
 
-  def makePartialSubs(self):
+  def __makePartialSubs(self, maxVariants):
     """
     Finding partial substitutions that satisfy condition B of Theorem 1
 
@@ -484,17 +497,11 @@ class Analysis:
 
     """
     partSubs = []
-    for var in self.maxVariants:
-      self.findCombCondB(var, partSubs, {})
-    self.partialSubs = partSubs
-    if len(self.partialSubs) != 0 and self.printDetails:
-      print("Частокві підстановки, що задовольняють умові B теореми 1:")
-      for index, sub in enumerate(self.partialSubs):
-        print(f"Підстановка №{index + 1}:")
-        self.printSub(sub)
-        print()
+    for variant in maxVariants:
+      self.__findCombCondB(variant, partSubs, {})
+    return partSubs
 
-  def makePartialVariants(self):
+  def __makePartialVariants(self, partialSubs) -> list:
     """
     Generate lists of possible mappings for the remaining vertices
 
@@ -504,42 +511,33 @@ class Analysis:
     Returns:
 
     """
-    for sub in self.partialSubs:
-      valuesToCheck = sub.values()
-      sub = dict(map(lambda kv: (kv[0], [kv[1]]), sub.items()))
-      if sub.keys() != self.graph1.graph.keys():
-        otherKeys = list(filter(lambda v1:
-                                v1 not in sub.keys(),
-                                self.graph1.graph.keys()))
-        for vertex1 in otherKeys:
-          possibleAdd = []
-          for vertex2 in sub.keys():
-            if vertex1 in self.graph1.graph[vertex2]:
-              for vertex3 in sub[vertex2]:
-                possibleAdd.extend(
-                  filter(lambda v4:
-                         self.graph1.hd[vertex1][0] <= self.graph2.hd[v4][0]
-                         and self.graph1.hd[vertex1][1] <= self.graph2.hd[v4][1]
-                         and v4 not in valuesToCheck
-                         and v4 not in possibleAdd,
-                         self.graph2.graph[vertex3])
-                )
-              break
-          if not possibleAdd:
-            possibleAdd = list(
-              filter(lambda v3:
-                     self.graph1.hd[vertex1][0] <= self.graph2.hd[v3][0]
-                     and self.graph1.hd[vertex1][1] <= self.graph2.hd[v3][1]
-                     and v3 not in valuesToCheck,
-                     self.graph2.graph.keys())
-            )
-          if len(possibleAdd) == 0:
-            break
-          sub[vertex1] = possibleAdd
-      if len(sub.keys()) == len(self.graph1.graph.keys()):
-        self.partialVariants.append(sub)
+    partialVariants = list()
+    for sub in partialSubs:
+      keysToCheck = np.uint32(sub.keys())
+      valuesToCheck = np.uint32(sub.values())
+      sub = dict(map(lambda pair: (pair[0], np.uint32([pair[1]])), sub.items()))
+      for nextVertex in np.delete(np.uint32(range(self.__graph1.size)), np.uint32(sub.keys())):
+        vertexesWithTransition = np.delete(np.argwhere(self.__graph1.graph[:, nextVertex] == 1), keysToCheck)
+        possibleAdd = np.delete(np.uint32(list(filter(lambda vertex:
+                                                      self.__graph2.hd[sub[vertex], 0] >= self.__graph1.hd[
+                                                        nextVertex, 0] and
+                                                      self.__graph2.hd[sub[vertex], 1] >= self.__graph1.hd[
+                                                        nextVertex, 1],
+                                                      vertexesWithTransition))),
+                                valuesToCheck)
+        if possibleAdd.size == 0:
+          possibleAdd = np.delete(np.argwhere((self.__graph2.hd[:, 0] >= self.__graph1.hd[nextVertex, 0]) &
+                                              (self.__graph2.hd[:, 1] >= self.__graph1.hd[nextVertex, 1])),
+                                  valuesToCheck)
 
-  def makeCompleteSubs(self):
+        if possibleAdd.size == 0:
+          break
+        sub[nextVertex] = possibleAdd
+      if len(sub.keys()) == self.__graph1.size:
+        partialVariants.append(sub)
+    return partialVariants
+
+  def __makeCompleteSubs(self, partialVariants):
     """
     Finding the resulting substitutions that satisfy condition B of Theorem 1
 
@@ -550,11 +548,11 @@ class Analysis:
 
     """
     completeSubs = []
-    for var in self.partialVariants:
-      self.findCombCondB(var, completeSubs, {})
-    self.completeSubs = completeSubs
+    for variant in partialVariants:
+      self.__findCombCondB(variant, completeSubs, {})
+    return completeSubs
 
-  def algorithm(self):
+  def __algorithm(self):
     """
     Step-by-step implementation of the algorithm for analyzing the isomorphic embedding of two directed graphs
 
@@ -565,90 +563,56 @@ class Analysis:
 
     """
     output = [[]]
-    self.makeRecord(
-      output[0],
-      [f"Checking the isomorphic embedding of the graph {self.graph1.fullName} "
-       f"into the graph {self.graph2.fullName}:"],
-      [f"Перевірка ізоморфного вкладення графа {self.graph1.fullName} "
-       f"у граф {self.graph2.fullName}"]
-    )
-    if self.checkCondA():
-      self.makeMaxSub()
-      self.makeMaxVariants()
-      self.makePartialSubs()
-      if len(self.partialSubs) != 0:
-        self.makePartialVariants()
-        self.makeCompleteSubs()
-        if len(self.completeSubs) != 0:
-          if len(self.completeSubs) != 0 and (self.printDetails or self.todoPDF):
-            self.makeRecord(
-              output[0],
-              ["The resulting substitutions that satisfy "
-               "condition B of Theorem 1:"],
-              ["Результуючі підстановки, які задовольняють умові B теореми 1:"]
-            )
+    # self.makeRecord(output[0],
+    #                 [f"Checking the isomorphic embedding of the graph {self.__graph1.fullName} "
+    #                  f"into the graph {self.__graph2.fullName}:"])
+    if self.__checkCondA():
+      maxSubs = self.__makeMaxSub()
+      maxVariants = self.__makeMaxVariants(maxSubs)
+      partialSubs = self.__makePartialSubs(maxVariants)
+      if len(partialSubs) > 0:
+        partialVariants = self.__makePartialVariants(partialSubs)
+        completeSubs = self.__makeCompleteSubs(partialVariants)
+        if len(completeSubs) > 0:
+          if self.__todoPDF:
+            # self.makeRecord(output[0], ["The resulting substitutions that satisfy condition B of Theorem 1:"])
             outputSub = []
             for index, sub in enumerate(self.completeSubs):
-              if self.printDetails:
-                print(f"Підстанвока №{index + 1}:")
-                self.printSub(sub)
-                print()
-              if self.todoPDF:
+              if self.__todoPDF:
                 outputSub.append([f"Substitution {index + 1}:",
                                   list(sub.keys()),
                                   list(sub.values())])
-            if self.todoPDF:
-              output.append(outputSub)
-              output.append([])
-              self.makeRecord(
-                output[-1],
-                [f"The graph {self.graph1.fullName} is isomorphically embedded "
-                 f"in the graph {self.graph2.fullName}"],
-                [f"Граф {self.graph1.fullName} ізоморфно вкладається у граф "
-                 f"{self.graph2.fullName}"]
-              )
-              self.output.append(output)
+            # if self.__todoPDF:
+            #   output.append(outputSub)
+            #   output.append([])
+            #   self.makeRecord(
+            #     output[-1],
+            #     [f"The graph {self.graph1.fullName} is isomorphically embedded in the graph {self.graph2.fullName}"])
+            #   self.output.append(output)
             return 0
         else:
-          self.makeRecord(
-            output[0],
-            [f"When trying to complete all possible substitutions, no option "
-             f"was found that fulfilled the conditions A and B of Theorem 1, "
-             f"therefore the graph {self.graph1.fullName} is NOT isomorphically"
-             f" embedded in the graph {self.graph2.fullName}"],
-            ["При доповнені часткових підстановок не вдалося знайти варіант, "
-             "який задовольняє умовам A та B Теореми 1.",
-             f"Граф {self.graph1.fullName} ізоморфно не вкладається у граф "
-             f"{self.graph2.fullName}"]
-          )
-          if self.todoPDF:
-            self.output.append(output)
+          #   self.makeRecord(output[0],
+          #                   [f"When trying to complete all possible substitutions, no option "
+          #                    f"was found that fulfilled the conditions A and B of Theorem 1, "
+          #                    f"therefore the graph {self.__graph1.fullName} is NOT isomorphically"
+          #                    f" embedded in the graph {self.__graph2.fullName}"])
+          #   if self.__todoPDF:
+          #     self.output.append(output)
           return 3
       else:
-        self.makeRecord(
-          output[0],
-          ["No partial substitutions were found that satisfy condition B of "
-           "Theorem 1.", f"The graph {self.graph1.fullName} is NOT "
-                         f"isomorphically embedded in the graph {self.graph2.fullName}."],
-          [f"Не вдалося знайти часткові підстановки, які задовольняють умові B "
-           f"теореми 1.\nГраф {self.graph1.fullName} ізоморфно НЕ вкладається"
-           f" до графа {self.graph2.fullName}."]
-        )
-        if self.todoPDF:
-          self.output.append(output)
+        # self.makeRecord(output[0],
+        #                 ["No partial substitutions were found that satisfy condition B of "
+        #                  "Theorem 1.", f"The graph {self.__graph1.fullName} is NOT "
+        #                                f"isomorphically embedded in the graph {self.__graph2.fullName}."])
+        # if self.__todoPDF:
+        #   self.output.append(output)
         return 2
     else:
-      self.makeRecord(
-        output[0],
-        [f"The given graphs do not satisfy  condition A of Theorem 1.",
-         f"The graph {self.graph1.fullName} is NOT isomorphically embedded "
-         f"in the graph {self.graph2.fullName}"],
-        [f"Введені графи не задовольняють умову A теореми 1.",
-         f"Граф {self.graph1.fullName} ізоморфно не вкладається у граф "
-         f"{self.graph2.fullName}"]
-      )
-      if self.todoPDF:
-        self.output.append(output)
+      # self.makeRecord(output[0], [f"The given graphs do not satisfy  condition A of Theorem 1.",
+      #                             f"The graph {self.__graph1.fullName} is NOT isomorphically embedded "
+      #                             f"in the graph {self.__graph2.fullName}"])
+      # if self.__todoPDF:
+      #   self.output.append(output)
       return 1
 
   '''
@@ -667,63 +631,60 @@ class Analysis:
       0 - graphs are isomorphically embedded;
       1, 2 and 3 - graphs are not  isomorphically embedded )
     """
-    self.clear()
+    self.__clear()
     startTime = time.time()
     isomorphicCheck = False
-    if self.graph1.size > self.graph2.size:
-      self.graph1, self.graph2 = self.graph2, self.graph1
-    elif self.graph1.size == self.graph2.size:
+    if self.__graph1.size > self.__graph2.size:
+      self.__graph1, self.__graph2 = self.__graph2, self.__graph1
+    elif self.__graph1.size == self.__graph2.size:
       isomorphicCheck = True
 
-    self.graph1.buildGraphImage()
-    self.graph2.buildGraphImage()
-
-    self.graph1.printHalfDegreesTable(self.output[0],
-                                      self.todoPDF, self.printDetails)
-    self.graph2.printHalfDegreesTable(self.output[1],
-                                      self.todoPDF, self.printDetails)
-
     if isomorphicCheck:
-      self.analysisResult = self.algorithm()
-      self.graph1, self.graph2 = self.graph2, self.graph1
-      self.analysisResult += self.algorithm()
-      self.graph1, self.graph2 = self.graph2, self.graph1
+      self.analysisResult = self.__algorithm()
+      self.__graph1, self.__graph2 = self.__graph2, self.__graph1
+      self.analysisResult += self.__algorithm()
+      self.__graph1, self.__graph2 = self.__graph2, self.__graph1
 
-      if self.analysisResult == 0:
-        if self.todoPDF or self.printDetails:
-          self.makeRecord(
-            self.output[-1][-1],
-            [f"The graphs {self.graph1.fullName} and {self.graph2.fullName} "
-             f"are isomorphic"],
-            [f"Графи {self.graph1.fullName} і {self.graph2.fullName} ізоморфні"]
-          )
+      # if self.analysisResult == 0 and self.__todoPDF:
+      #   self.makeRecord(
+      #     self.output[-1][-1],
+      #     [f"The graphs {self.__graph1.fullName} and {self.__graph2.fullName} are isomorphic"]
+      #   )
     else:
-      self.analysisResult = self.algorithm()
+      self.analysisResult = self.__algorithm()
 
     endTime = time.time()
+    self.analysisTime = endTime - startTime
 
-    if self.todoPDF:
-      self.makeRecord(self.output[-1][-1],
-                      [f"Program execution time: {endTime - startTime} seconds"],
-                      [f"Час виконання програми: {endTime - startTime} секунд"])
-    else:
-      self.makeRecord([],
-                      [f"Program execution time: {endTime - startTime} seconds"],
-                      [f"Час виконання програми: {endTime - startTime} секунд"])
-
-    if self.todoPDF:
-      self.makePDF()
+    # if self.__todoPDF:
+    #   self.makeRecord(self.output[-1][-1], [f"Program execution time: {self.analysisTime} seconds"])
+    # else:
+    #   self.makeRecord([], [f"Program execution time: {self.analysisTime} seconds"])
+    #
+    # if self.__todoPDF:
+    #   self.makePDF()
 
     return self.analysisResult
 
 
 if __name__ == '__main__':
-  testGraph = {
-   "x1": ["x2"],
-   "x2": ["x1", "x4"],
-   "x3": ["x2", "x3", "x5"],
-   "x4": ["x1"],
-   "x5": ["x2", "x5"]
+  vartest = {
+    "GAL1": {'y1': ['y6', 'y8', 'y4', 'y2'], 'y2': ['y6'], 'y3': ['y1', 'y2', 'y6', 'y5', 'y3', 'y4'],
+             'y4': ['y6', 'y8', 'y2', 'y1', 'y5'], 'y5': ['y8'], 'y6': ['y3', 'y7', 'y5', 'y4'],
+             'y7': ['y3', 'y8', 'y2'], 'y8': ['y6', 'y8', 'y2']},
+    "GAL2": {'x1': ['x4', 'x2'], 'x2': ['x5'], 'x3': ['x1', 'x5', 'x3', 'x4'], 'x4': ['x5', 'x1'], 'x5': ['x4']}
   }
-  g1 = Graph(testGraph, "G", "V", "E")
+  # testGraph = {
+  #   "x1": ["x2"],
+  #   "x2": ["x1", "x4"],
+  #   "x3": ["x2", "x3", "x5"],
+  #   "x4": ["x1"],
+  #   "x5": ["x2", "x5"]
+  # }
+  # g1 = Graph(testGraph, "G", "V", "E")
+
+  testAn = Analysis(vartest["GAL1"], vartest["GAL2"])
+
+  testAn.makeAnalysis()
+
   print()
