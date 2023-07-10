@@ -130,7 +130,6 @@ class Graph:
 
     Returns:
       A list of strings representing the calculated outdegrees and indegrees table with the specified adjacency lists
-
     """
     output = list()
     output.append(f"Graph {self.fullName} | Size: {self.size}")
@@ -140,13 +139,16 @@ class Graph:
                     self.stringFormat(f"{graph[vertex]}", '{', '}'))
     return output
 
-  def buildGraphImage(self, graph) -> None:
+  def buildGraphImage(self, graph) -> str:
     """
     A method that generates a graphical representation of a given graph
 
     Args:
       graph (dict): Adjacency lists defined with a dictionary
       Uses class attributes: self.fullName
+
+    Returns:
+      Full file name of the image
     """
     g = gviz.Digraph('graph', engine='neato',
                      graph_attr={'splines': 'true', 'overlap': 'false',
@@ -159,29 +161,74 @@ class Graph:
       for nextVertex in graph[vertex]:
         g.edge(vertex, nextVertex)
     g.render(filename=f"{self.fullName}", format="png", directory="pngs")
+    return f"{self.fullName}.png"
 
 
 class PDFCreator:
   def __init__(self, fileName: str):
-    pass
+    self.__document = Document()
+    self.__pages = list()
+    self.__layouts = list()
+    self.__fileName = fileName if fileName[-4:] == ".pdf" else fileName + ".pdf"
+
+  def clear(self):
+    self.__document = Document()
+    self.__pages = self.__pages[:2]
+    self.__layouts = self.__layouts[:2]
+    self.__document.add_page(self.__pages[0])
+    self.__document.add_page(self.__pages[1])
+
+  def addPage(self):
+    page = Page()
+    self.__document.add_page(page)
+    self.__pages.append(page)
+    layout = SingleColumnLayout(page)
+    self.__layouts.append(layout)
 
   def addImage(self, path: str):
-    pass
-
-  def addTable(self, table: list):
-    pass
+    self.addPage()
+    img = ImgReader.open(f"pngs/{path}")
+    (width, height) = img.size
+    if height > 660:
+      width = int(width * 660 / height)
+      height = 660
+    if width > 470:
+      height = int(height * 470 / width)
+      width = 470
+    self.__layouts[-1].add(Image(Path(f"pngs/{path}"), width=Decimal(width), height=Decimal(height)))
 
   def addLine(self, line: str):
-    pass
+    self.__layouts[-1].add(Paragraph(line, font="Courier"))
 
-  def addMultiLine(self, text: list):
-    pass
+  def addMultiLine(self, table: list):
+    for line in table:
+      self.__layouts[-1].add(Paragraph(line, font="Courier"))
 
-  def addSubstitution(self, number: int, substitution: dict):
-    pass
+  def addSubstitutions(self, substitutions: list):
+    for sub in substitutions:
+      self.__layouts[-1].add(Paragraph(sub[0], font="Courier"))
+      numCol = len(sub[1])
+      numRow = 2 * ceil(numCol / 13)
+      table = FixedColumnWidthTable(number_of_columns=13, number_of_rows=numRow)
+      for col in range(0, numCol - 1, 13):
+        for pos in range(col, col + 13, 1):
+          if pos < numCol:
+            table.add(Paragraph(sub[1][pos], font="Courier"))
+          else:
+            table.add(Paragraph('', font="Courier"))
+        for pos in range(col, col + 13, 1):
+          if pos < numCol:
+            table.add(Paragraph(sub[2][pos], font="Courier"))
+          else:
+            table.add(Paragraph('', font="Courier"))
+      table.set_padding_on_all_cells(Decimal(2), Decimal(2),
+                                     Decimal(2), Decimal(2))
+      self.__layouts[-1].add(table)
+      self.__layouts[-1].add(Paragraph('', font="Courier"))
 
   def saveFile(self):
-    pass
+    with open(Path(self.__fileName), "wb") as pdfFileHandler:
+     PDF.dumps(pdfFileHandler, self.__document)
 
 
 class Analysis:
@@ -194,10 +241,10 @@ class Analysis:
     fileName (str): Name of the vertex set (Symbol by which it is denoted)
 
   Attributes:
-    graph1 (Graph): Graph representation using a numpy array
-    graph2 (Graph): Graph representation using a numpy array
-    fileName (str): Graph dimensionality
-    output (list): Full name of the graph (including the set of vertices and edges)
+    __graph1 (dict): Graph representation using a numpy array
+    __graph2 (dict): Graph representation using a numpy array
+    __fileName (str): Graph dimensionality
+    __todoPDF (list): Full name of the graph (including the set of vertices and edges)
     completeSubs (list): The calculated table of semi-powers, which is specified using a numpy array
     analysisResult (int):
     analysisResult (float):
@@ -209,23 +256,19 @@ class Analysis:
     self.__fileName: str = fileName
     self.__todoPDF: bool = False if fileName is None else True
 
-    # self.output: list = [[], []]
-    # self.maxSubs: dict = {}
-    # self.maxVariants: list = []
-    # self.partialSubs: list = []
-    # self.partialVariants: list = []
-
     self.completeSubs: list = []
     self.analysisResult: int = 0
     self.analysisTime: float = 0
 
     if self.__todoPDF:
-      self.__graph1.buildGraphImage(graph1)
-      self.__graph2.buildGraphImage(graph2)
+      self.__report = PDFCreator(self.__fileName)
 
-      # TODO: Add images to the PDF file
+      self.__report.addImage(self.__graph1.buildGraphImage(graph1))
+      self.__report.addMultiLine(self.__graph1.printHalfDegreesTable(graph1))
+      self.__report.addImage(self.__graph2.buildGraphImage(graph2))
+      self.__report.addMultiLine(self.__graph2.printHalfDegreesTable(graph2))
 
-      # TODO: Add table of the outdegrees and indegrees to the PDF file
+      self.__output: list = [[], []]
 
   def __clear(self):
     """
@@ -233,15 +276,16 @@ class Analysis:
 
     Args:
       Uses class attributes: self.graph
-
-    Returns:
-
     """
     self.completeSubs = []
     self.analysisResult = 0
     self.analysisTime = 0
 
-  def makePDF(self):
+    if self.__todoPDF:
+      self.__report.clear()
+      self.__output: list = []
+
+  def __makePDF(self):
     """
     Generating a report in PDF format with the results of the analysis
 
@@ -251,106 +295,22 @@ class Analysis:
     Returns:
 
     """
-    pdf = Document()
+    print()
 
-    page1 = Page()
-    pdf.add_page(page1)
-    layout1 = SingleColumnLayout(page1)
+    self.__report.addPage()
+    self.__report.addMultiLine(self.__output[0][0])
+    if len(self.__output[0]) > 1:
+      self.__report.addSubstitutions(self.__output[0][1])
 
-    img = ImgReader.open(f"pngs/{self.graph1.fullName}.png")
-    (w, h) = img.size
-    if h > 660:
-      w = int(w * 660 / h)
-      h = 660
-    if w > 470:
-      h = int(h * 470 / w)
-      w = 470
-    layout1.add(Image(Path(f"pngs/{self.graph1.fullName}.png"),
-                      width=w, height=h))
+    if len(self.__output) > 1:
+      self.__report.addPage()
+      self.__report.addMultiLine(self.__output[1][0])
+      if len(self.__output[1]) > 1:
+        self.__report.addSubstitutions(self.__output[0][1])
 
-    for line in self.output[0]:
-      layout1.add(Paragraph(line, font="Courier"))
+    self.__report.saveFile()
 
-    page2 = Page()
-    pdf.add_page(page2)
-    layout2 = SingleColumnLayout(page2)
-
-    img = ImgReader.open(f"pngs/{self.graph2.fullName}.png")
-    (w, h) = img.size
-    if h > 660:
-      w = int(w * 660 / h)
-      h = 660
-    if w > 470:
-      h = int(h * 470 / w)
-      w = 470
-    layout2.add(Image(Path(f"pngs/{self.graph2.fullName}.png"),
-                      width=w, height=h))
-    for line in self.output[1]:
-      layout2.add(Paragraph(line, font="Courier"))
-
-    page3 = Page()
-    pdf.add_page(page3)
-    layout3 = SingleColumnLayout(page3)
-
-    for text in self.output[2:]:
-      for line in text[0]:
-        layout3.add(Paragraph(line, font="Courier"))
-      if len(text) == 3:
-        for line in text[1]:
-          layout3.add(Paragraph(line[0], font="Courier"))
-          numCol = len(line[1])
-          numRow = 2 * ceil(numCol / 13)
-          table = FixedColumnWidthTable(number_of_columns=13,
-                                        number_of_rows=numRow)
-          for col in range(0, numCol - 1, 13):
-            for pos in range(col, col + 13, 1):
-              if pos < numCol:
-                table.add(Paragraph(line[1][pos], font="Courier"))
-              else:
-                table.add(Paragraph('', font="Courier"))
-            for pos in range(col, col + 13, 1):
-              if pos < numCol:
-                table.add(Paragraph(line[2][pos], font="Courier"))
-              else:
-                table.add(Paragraph('', font="Courier"))
-          table.set_padding_on_all_cells(Decimal(2), Decimal(2),
-                                         Decimal(2), Decimal(2))
-          layout3.add(table)
-          layout3.add(Paragraph('', font="Courier"))
-        for line in text[-1]:
-          layout3.add(Paragraph(line, font="Courier"))
-
-    with open(Path(f"{self.fileName}.pdf"), "wb") as pdf_file_handle:
-      PDF.dumps(pdf_file_handle, pdf)
-    print(f"Звіт збережено до файлу {self.fileName}.pdf")
-
-  @staticmethod
-  def printSub(sub):
-    """
-    Function for displaying a substitution to the console
-
-    Args:
-      Uses class attributes: self.graph
-
-    Returns:
-
-    """
-    print('\t'.join(sub.keys()))
-    print('\t'.join(sub.values()))
-
-  def makeRecord(self, output, text):
-    """
-    A function for outputting text to the console and a pdf report
-
-    Args:
-      Uses class attributes: self.graph
-
-    Returns:
-
-    """
-    if self.__todoPDF:
-      for line in text:
-        output.append(text)
+    print()
 
   def __findCombCondA(self, variants, current):
     """
@@ -565,10 +525,10 @@ class Analysis:
     Returns:
 
     """
-    output = [[]]
-    # self.makeRecord(output[0],
-    #                 [f"Checking the isomorphic embedding of the graph {self.__graph1.fullName} "
-    #                  f"into the graph {self.__graph2.fullName}:"])
+    if self.__todoPDF:
+      output = [[]]
+      output[0].append(f"""Checking the isomorphic embedding of the graph {self.__graph1.fullName} 
+      into the graph {self.__graph2.fullName}:""")
     if self.__checkCondA():
       maxSubs = self.__makeMaxSub()
       maxVariants = self.__makeMaxVariants(maxSubs)
@@ -577,52 +537,40 @@ class Analysis:
         partialVariants = self.__makePartialVariants(partialSubs)
         completeSubs = self.__makeCompleteSubs(partialVariants)
         if len(completeSubs) > 0:
-          self.completeSubs = completeSubs
+          for sub in completeSubs:
+            translatedSub = {}
+            for vertex in sub:
+              translatedSub[self.__graph1.transition[vertex]] = self.__graph2.transition[sub[vertex]]
+            self.completeSubs.append(translatedSub)
           if self.__todoPDF:
-            pass
-            # self.makeRecord(output[0], ["The resulting substitutions that satisfy condition B of Theorem 1:"])
-            # outputSub = []
-            # for index, sub in enumerate(self.completeSubs):
-            #   if self.__todoPDF:
-            #     outputSub.append([f"Substitution {index + 1}:",
-            #                       list(sub.keys()),
-            #                       list(sub.values())])
-            # if self.__todoPDF:
-            #   output.append(outputSub)
-            #   output.append([])
-            #   self.makeRecord(
-            #     output[-1],
-            #     [f"The graph {self.graph1.fullName} is isomorphically embedded in the graph {self.graph2.fullName}"])
-            #   self.output.append(output)
+            # TODO: Write to the output[1]
+            output[0].append(f"""The graph {self.__graph1.fullName} is isomorphically embedded 
+            in the graph {self.__graph2.fullName}""")
+            output[0].append("The resulting substitutions that satisfy condition B of Theorem 1:")
+            output.append(list())
+            for index, sub in enumerate(self.completeSubs):
+              output[1].append([f"Substitution {index + 1}:", list(sub.keys()), list(sub.values())])
+            self.__output.append(output)
           return 0
         else:
-          #   self.makeRecord(output[0],
-          #                   [f"When trying to complete all possible substitutions, no option "
-          #                    f"was found that fulfilled the conditions A and B of Theorem 1, "
-          #                    f"therefore the graph {self.__graph1.fullName} is NOT isomorphically"
-          #                    f" embedded in the graph {self.__graph2.fullName}"])
-          #   if self.__todoPDF:
-          #     self.output.append(output)
+          if self.__todoPDF:
+            output[0].append(f"""When trying to complete all possible substitutions, no option was found that 
+            fulfilled the conditions A and B of Theorem 1, therefore the graph {self.__graph1.fullName} is NOT 
+            isomorphically embedded in the graph {self.__graph2.fullName}""")
+            self.__output.append(output)
           return 3
       else:
-        # self.makeRecord(output[0],
-        #                 ["No partial substitutions were found that satisfy condition B of "
-        #                  "Theorem 1.", f"The graph {self.__graph1.fullName} is NOT "
-        #                                f"isomorphically embedded in the graph {self.__graph2.fullName}."])
-        # if self.__todoPDF:
-        #   self.output.append(output)
+        if self.__todoPDF:
+          output[0].append(f"""No partial substitutions were found that satisfy condition B of Theorem 1. 
+          The graph {self.__graph1.fullName} is NOT isomorphically embedded in the graph {self.__graph2.fullName}.""")
+          self.__output.append(output)
         return 2
     else:
-      # self.makeRecord(output[0], [f"The given graphs do not satisfy  condition A of Theorem 1.",
-      #                             f"The graph {self.__graph1.fullName} is NOT isomorphically embedded "
-      #                             f"in the graph {self.__graph2.fullName}"])
-      # if self.__todoPDF:
-      #   self.output.append(output)
+      if self.__todoPDF:
+        output[0].append(f"""The given graphs do not satisfy  condition A of Theorem 1. 
+        The graph {self.__graph1.fullName} is NOT isomorphically embedded in the graph {self.__graph2.fullName}""")
+        self.__output.append(output)
       return 1
-
-  '''
-  
-  '''
 
   def makeAnalysis(self):
     """
@@ -650,24 +598,16 @@ class Analysis:
       self.analysisResult += self.__algorithm()
       self.__graph1, self.__graph2 = self.__graph2, self.__graph1
 
-      # if self.analysisResult == 0 and self.__todoPDF:
-      #   self.makeRecord(
-      #     self.output[-1][-1],
-      #     [f"The graphs {self.__graph1.fullName} and {self.__graph2.fullName} are isomorphic"]
-      #   )
+      if self.analysisResult == 0 and self.__todoPDF:
+        self.__output.append([f"The graphs {self.__graph1.fullName} and {self.__graph2.fullName} are isomorphic"])
     else:
       self.analysisResult = self.__algorithm()
 
     endTime = time.time()
     self.analysisTime = endTime - startTime
 
-    # if self.__todoPDF:
-    #   self.makeRecord(self.output[-1][-1], [f"Program execution time: {self.analysisTime} seconds"])
-    # else:
-    #   self.makeRecord([], [f"Program execution time: {self.analysisTime} seconds"])
-    #
-    # if self.__todoPDF:
-    #   self.makePDF()
+    if self.__todoPDF:
+      self.__makePDF()
 
     return self.analysisResult
 
@@ -688,7 +628,7 @@ if __name__ == '__main__':
   # }
   # g1 = Graph(testGraph, "G", "V", "E")
 
-  testAn = Analysis(vartest["GAL1"], vartest["GAL2"])
+  testAn = Analysis(vartest["GAL1"], vartest["GAL2"], "test")
 
   testAn.makeAnalysis()
 

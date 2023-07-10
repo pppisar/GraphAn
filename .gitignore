@@ -2,3 +2,5 @@
 /.idea
 /pngs
 /venv
+
+*.pdf
