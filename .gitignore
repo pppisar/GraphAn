@@ -2,5 +2,6 @@
 /.idea
 /pngs
 /venv
+/tests/.ipynb_checkpoints
 
 *.pdf

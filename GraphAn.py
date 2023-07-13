@@ -59,48 +59,43 @@ class Graph:
     self.edge: str = eSymbol
     self.fullName: str = f"{gSymbol} = ({vSymbol}, {eSymbol})"
     self.transition: dict = dict()
-    self.graph: np.ndarray = self.transformToMatrix(graph)
-    self.hd: np.ndarray = self.countHalfDegrees(graph)
+    self.lists: dict = graph
+    self.matrix: np.ndarray = self.transformToMatrix()
+    self.hd: np.ndarray = self.countHalfDegrees()
 
-  def transformToMatrix(self, graph: dict) -> np.ndarray:
+  def transformToMatrix(self) -> np.ndarray:
     """
     A method that converts adjacency lists to an adjacency matrix
-
-    Args:
-      graph (dict): Adjacency lists defined with a dictionary
 
     Returns:
       adjacencyMatrix (np.ndarray): Graph adjacency matrix
     """
     transitionToNumber = dict()
 
-    matrixSize = len(graph.keys())
+    matrixSize = len(self.lists.keys())
     adjacencyMatrix = np.zeros((matrixSize, matrixSize), dtype=np.uint32)
 
-    for index, vertex in enumerate(graph.keys()):
+    for index, vertex in enumerate(self.lists.keys()):
       self.transition[index] = vertex
       transitionToNumber[vertex] = index
-    for vertexFrom, edges in enumerate(graph.values()):
+    for vertexFrom, edges in enumerate(self.lists.values()):
       for vertexTo in edges:
         adjacencyMatrix[vertexFrom, transitionToNumber[vertexTo]] = 1
 
     return adjacencyMatrix
 
-  def countHalfDegrees(self, graph: dict) -> np.ndarray:
+  def countHalfDegrees(self) -> np.ndarray:
     """
     A method that calculates the outdegrees and indegrees of a given graph
-
-    Args:
-      graph (dict): Adjacency lists defined with a dictionary
 
     Returns:
       halfDegrees: The calculated table of outdegrees and indegrees
     """
-    halfDegrees = np.zeros((len(graph.keys()), 2), dtype=np.uint32)
+    halfDegrees = np.zeros((len(self.lists.keys()), 2), dtype=np.uint32)
 
-    for index, vertex in enumerate(graph.keys()):
-      hdOut = len(graph[vertex])
-      hdIn = np.count_nonzero(self.graph[:, index] == 1)
+    for index, vertex in enumerate(self.lists.keys()):
+      hdOut = len(self.lists[vertex])
+      hdIn = np.count_nonzero(self.matrix[:, index] == 1)
       halfDegrees[index] = [hdOut, hdIn]
     return halfDegrees
 
@@ -119,33 +114,25 @@ class Graph:
     """
     return line.replace('[', r1).replace(']', r2).replace("'", "")
 
-  def printHalfDegreesTable(self, graph: dict) -> list:
+  def printHalfDegreesTable(self) -> list:
     """
     The method that prints the calculated table of outdegrees
     and indegrees using adjacency lists representing the given graph
-
-    Args:
-      graph (dict): Adjacency lists defined with a dictionary
-      Uses class attributes: self.fullName, self.size and self.hd,
 
     Returns:
       A list of strings representing the calculated outdegrees and indegrees table with the specified adjacency lists
     """
     output = list()
     output.append(f"Graph {self.fullName} | Size: {self.size}")
-    for index, vertex in enumerate(graph):
+    for index, vertex in enumerate(self.lists):
       output.append(f"{vertex} | " +
                     self.stringFormat(f"{self.hd[index]} | ", '(', ')') +
-                    self.stringFormat(f"{graph[vertex]}", '{', '}'))
+                    self.stringFormat(f"{self.lists[vertex]}", '{', '}'))
     return output
 
-  def buildGraphImage(self, graph) -> str:
+  def buildGraphImage(self) -> str:
     """
     A method that generates a graphical representation of a given graph
-
-    Args:
-      graph (dict): Adjacency lists defined with a dictionary
-      Uses class attributes: self.fullName
 
     Returns:
       Full file name of the image
@@ -156,9 +143,9 @@ class Graph:
                                  'label': f"{self.fullName}",
                                  'fontsize': str(20)},
                      node_attr={'shape': 'circle', 'fontsize': str(20)})
-    for vertex in graph:
+    for vertex in self.lists:
       g.node(vertex, vertex)
-      for nextVertex in graph[vertex]:
+      for nextVertex in self.lists[vertex]:
         g.edge(vertex, nextVertex)
     g.render(filename=f"{self.fullName}", format="png", directory="pngs")
     return f"{self.fullName}.png"
@@ -295,9 +282,9 @@ class Analysis:
     analysisResult (float):
   """
 
-  def __init__(self, graph1: dict, graph2: dict, fileName: str = None):
-    self.__graph1: Graph = Graph(graph1, "G", "F", "E")
-    self.__graph2: Graph = Graph(graph2, "H", "P", "L")
+  def __init__(self, graph1: Graph, graph2: Graph, fileName: str = None):
+    self.__graph1: Graph = graph1
+    self.__graph2: Graph = graph2
     self.__todoPDF: bool = False if fileName is None else True
 
     self.completeSubs: list = []
@@ -307,10 +294,10 @@ class Analysis:
     if self.__todoPDF:
       self.__report = PDFCreator(fileName)
 
-      self.__report.addImage(self.__graph1.buildGraphImage(graph1))
-      self.__report.addMultiLine(self.__graph1.printHalfDegreesTable(graph1))
-      self.__report.addImage(self.__graph2.buildGraphImage(graph2))
-      self.__report.addMultiLine(self.__graph2.printHalfDegreesTable(graph2))
+      self.__report.addImage(self.__graph1.buildGraphImage())
+      self.__report.addMultiLine(self.__graph1.printHalfDegreesTable())
+      self.__report.addImage(self.__graph2.buildGraphImage())
+      self.__report.addMultiLine(self.__graph2.printHalfDegreesTable())
 
       self.__output: list = []
 
@@ -406,8 +393,8 @@ class Analysis:
       True if condition B is satisfied, otherwise False
     """
     for vertex in sub.keys():
-      for nextVertex in np.argwhere(self.__graph1.graph[vertex] == 1)[:, 0]:
-        if nextVertex in sub.keys() and sub[nextVertex] not in np.argwhere(self.__graph2.graph[sub[vertex]] == 1)[:, 0]:
+      for nextVertex in np.argwhere(self.__graph1.matrix[vertex] == 1)[:, 0]:
+        if nextVertex in sub.keys() and sub[nextVertex] not in np.argwhere(self.__graph2.matrix[sub[vertex]] == 1)[:, 0]:
           return False
     return True
 
@@ -465,14 +452,14 @@ class Analysis:
     for maxVertex in maxSubs:
       for maxSub in maxSubs[maxVertex]:
         partSub = {maxVertex: np.uint32([maxSub])}
-        otherVertices = np.uint32(np.argwhere(self.__graph1.graph[maxVertex] == 1)[:, 0])
+        otherVertices = np.uint32(np.argwhere(self.__graph1.matrix[maxVertex] == 1)[:, 0])
         for nextVertex in otherVertices:
           if nextVertex != maxVertex:
             possibleSubs = np.uint32(list(filter(lambda vertexG2:
                                                  self.__graph1.hd[nextVertex][0] <= self.__graph2.hd[vertexG2][0] and
                                                  self.__graph1.hd[nextVertex][1] <= self.__graph2.hd[vertexG2][1] and
                                                  vertexG2 not in partSub[maxVertex],
-                                                 np.argwhere(self.__graph2.graph[maxSub] == 1)[:, 0])))
+                                                 np.argwhere(self.__graph2.matrix[maxSub] == 1)[:, 0])))
             if possibleSubs.size == 0:
               break
             partSub[nextVertex] = possibleSubs
@@ -511,7 +498,7 @@ class Analysis:
       valuesToCheck = np.uint32(list(sub.values()))
       subVariant = dict(map(lambda pair: (pair[0], np.uint32([pair[1]])), sub.items()))
       for nextVertex in np.delete(np.uint32(range(self.__graph1.size)), keysToCheck):
-        verticesWithTransition = np.uint32(np.intersect1d(np.argwhere(self.__graph1.graph[:, nextVertex] == 1)[:, 0],
+        verticesWithTransition = np.uint32(np.intersect1d(np.argwhere(self.__graph1.matrix[:, nextVertex] == 1)[:, 0],
                                                           keysToCheck))
         for vertexTo in verticesWithTransition:
           variants = np.setdiff1d(np.uint32(list(filter(lambda vertex:
@@ -519,7 +506,7 @@ class Analysis:
                                                           nextVertex, 0] and
                                                         self.__graph2.hd[vertex, 1] >= self.__graph1.hd[
                                                           nextVertex, 1],
-                                                        np.argwhere(self.__graph2.graph[sub[vertexTo]] == 1)[:, 0]))),
+                                                        np.argwhere(self.__graph2.matrix[sub[vertexTo]] == 1)[:, 0]))),
                                   valuesToCheck)
         if variants.size == 0:
           variants = np.setdiff1d(np.argwhere((self.__graph2.hd[:, 0] >= self.__graph1.hd[nextVertex, 0]) &
@@ -636,26 +623,3 @@ class Analysis:
       self.__makePDF()
 
     return self.analysisResult
-
-
-if __name__ == '__main__':
-  vartest = {
-    "GAL1": {'y1': ['y6', 'y8', 'y4', 'y2'], 'y2': ['y6'], 'y3': ['y1', 'y2', 'y6', 'y5', 'y3', 'y4'],
-             'y4': ['y6', 'y8', 'y2', 'y1', 'y5'], 'y5': ['y8'], 'y6': ['y3', 'y7', 'y5', 'y4'],
-             'y7': ['y3', 'y8', 'y2'], 'y8': ['y6', 'y8', 'y2']},
-    "GAL2": {'x1': ['x4', 'x2'], 'x2': ['x5'], 'x3': ['x1', 'x5', 'x3', 'x4'], 'x4': ['x5', 'x1'], 'x5': ['x4']}
-  }
-  # testGraph = {
-  #   "x1": ["x2"],
-  #   "x2": ["x1", "x4"],
-  #   "x3": ["x2", "x3", "x5"],
-  #   "x4": ["x1"],
-  #   "x5": ["x2", "x5"]
-  # }
-  # g1 = Graph(testGraph, "G", "V", "E")
-
-  testAn = Analysis(vartest["GAL1"], vartest["GAL2"], "test")
-
-  testAn.makeAnalysis()
-
-  print()

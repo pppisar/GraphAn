@@ -211,8 +211,3 @@ class Generator:
     self.analysis = Analysis(self.subgraph, self.supergraph,
                              fileName, True, False)
     self.analysis.makeAnalysis()
-
-
-if __name__ == "__main__":
-  var1 = Generator()
-  var1.createVariant()
