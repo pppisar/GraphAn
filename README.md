@@ -52,18 +52,59 @@ from GraphAn import Graph, Analysis
 
 ## 3. Examples
 
-...
+### Set the graphs to be analyzed.
+```python
+graphs1 = Graph(
+    {
+        'x1': ['x4', 'x2'], 
+        'x2': ['x5'], 
+        'x3': ['x1', 'x5', 'x3', 'x4'], 
+        'x4': ['x5', 'x1'], 
+        'x5': ['x4']
+    },
+    "G", "X", "F"
+)
+
+graphs2 = Graph(
+    {
+        'y1': ['y6', 'y8', 'y4', 'y2'], 
+        'y2': ['y6'], 
+        'y3': ['y1', 'y2', 'y6', 'y5', 'y3', 'y4'],
+        'y4': ['y6', 'y8', 'y2', 'y1', 'y5'], 
+        'y5': ['y8'], 
+        'y6': ['y3', 'y7', 'y5', 'y4'],
+        'y7': ['y3', 'y8', 'y2'], 
+        'y8': ['y6', 'y8', 'y2']
+    },
+    "H", "Y", "P"
+)
+```
+
+### Create an object of the Analysis class and run the analysis
+```python
+analysis1 = Analysis(graph1, graph2, "reports/test1.pdf")
+analysis1.makeAnalysis()
+```
+
+### Graphical representation of two oriented graphs
+![Orieted graphs](/images/graphs.png)
+
+### Calculated tables of outdegrees and indegrees
+![outdegrees and indegrees](/images/degrees.png)
+
+### Analysis result (substitutions found)
+![substitutions](/images/result.png)
 
 ## 4. Analysis algorithm
 
 ### Necessary and sufficient conditions for isomorphic embedding
 For an isomorphic embedding of a graph G1 = (V1, E1) into a graph G2 = (V2, E2), the following two conditions must be necessary and simultaneously sufficient:
 
->Condition A
->- For each vertex in the set V1 of graph G1, there must exist at least one such vertex in the set V2 of graph G2, whose outdegree and indegree are not less than the outdegree and indegree of the vertex in the set V1.
+**Condition A**
+- For each vertex in the set V1 of graph G1, there must exist at least one such vertex in the set V2 of graph G2, whose outdegree and indegree are not less than the outdegree and indegree of the vertex in the set V1.
 
->Condition B
->- There must be at least one bijective mapping 𝑓:V1 → V2', where V2' ⊆ V2, that transforms the graph G1 into the graph G2' = (V2', E2'), where E2' ⊆ E2.
+**Condition B**
+- There must be at least one bijective mapping 𝑓:V1 → V2', where V2' ⊆ V2, that transforms the graph G1 into the graph G2' = (V2', E2'), where E2' ⊆ E2.
 
 ### Algorithm
 

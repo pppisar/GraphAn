@@ -164,21 +164,12 @@ class PDFCreator:
     __layouts (list): Content of each page
     __fileName (str): Edited (full) name of the report
   """
+
   def __init__(self, fileName: str):
     self.__document = Document()
     self.__pages = list()
     self.__layouts = list()
     self.__fileName = fileName if fileName[-4:] == ".pdf" else fileName + ".pdf"
-
-  def clear(self) -> None:
-    """
-    Deleting information related to the analysis
-    """
-    self.__document = Document()
-    self.__pages = self.__pages[:2]
-    self.__layouts = self.__layouts[:2]
-    self.__document.add_page(self.__pages[0])
-    self.__document.add_page(self.__pages[1])
 
   def addPage(self) -> None:
     """
@@ -260,7 +251,7 @@ class PDFCreator:
     Save the generated report to a file with the .pdf extension
     """
     with open(Path(self.__fileName), "wb") as pdfFileHandler:
-     PDF.dumps(pdfFileHandler, self.__document)
+      PDF.dumps(pdfFileHandler, self.__document)
 
 
 class Analysis:
@@ -268,23 +259,25 @@ class Analysis:
   An analysis class that implements all the steps of the isomorphic embedding analysis algorithm
 
   Args:
-    graph1 (dict): A graph defined using adjacency lists
-    graph2 (dict): Name of the graph (Symbol by which it is denoted)
-    fileName (str): Name of the vertex set (Symbol by which it is denoted)
+    graph1 (Graph): First oriented graph
+    graph2 (Graph): Second oriented graph
+    fileName (str): Name of the PDF report
 
   Attributes:
-    __graph1 (dict): Graph representation using a numpy array
-    __graph2 (dict): Graph representation using a numpy array
-    __fileName (str): Graph dimensionality
-    __todoPDF (list): Full name of the graph (including the set of vertices and edges)
-    completeSubs (list): The calculated table of semi-powers, which is specified using a numpy array
-    analysisResult (int):
-    analysisResult (float):
+    __graph1 (dict): First oriented graph
+    __graph2 (dict): Second oriented graph
+    __fileName (str): Name of the PDF report
+    __todoPDF (bool): Whether to create a PDF report (based on the specified report name)
+    completeSubs (list): The substitutions found as a result of the analysis
+    analysisResult (int): Analysis result (0 - graphs are isomorphically embedded,
+    otherwise - graphs are not isomorphically embedded)
+    analysisTime (float): Analysis execution time
   """
 
   def __init__(self, graph1: Graph, graph2: Graph, fileName: str = None):
     self.__graph1: Graph = graph1
     self.__graph2: Graph = graph2
+    self.__fileName: str = fileName
     self.__todoPDF: bool = False if fileName is None else True
 
     self.completeSubs: list = []
@@ -292,13 +285,6 @@ class Analysis:
     self.analysisTime: float = 0
 
     if self.__todoPDF:
-      self.__report = PDFCreator(fileName)
-
-      self.__report.addImage(self.__graph1.buildGraphImage())
-      self.__report.addMultiLine(self.__graph1.printHalfDegreesTable())
-      self.__report.addImage(self.__graph2.buildGraphImage())
-      self.__report.addMultiLine(self.__graph2.printHalfDegreesTable())
-
       self.__output: list = []
 
   def __clear(self) -> None:
@@ -310,7 +296,13 @@ class Analysis:
     self.analysisTime = 0
 
     if self.__todoPDF:
-      self.__report.clear()
+      self.__report = PDFCreator(self.__fileName)
+
+      self.__report.addImage(self.__graph1.buildGraphImage())
+      self.__report.addMultiLine(self.__graph1.printHalfDegreesTable())
+      self.__report.addImage(self.__graph2.buildGraphImage())
+      self.__report.addMultiLine(self.__graph2.printHalfDegreesTable())
+
       self.__output: list = []
 
   def __makePDF(self) -> None:
@@ -329,6 +321,7 @@ class Analysis:
       self.__report.addMultiLine(self.__output[1][0])
       if len(self.__output[1]) > 1:
         self.__report.addSubstitutions(self.__output[0][1])
+        self.__report.addLine(self.__output[2])
 
     self.__report.addLine(f"Execution time: {self.analysisTime}")
 
@@ -384,7 +377,7 @@ class Analysis:
 
   def __conditionB(self, sub):
     """
-    Verification of (partial) substitution of condition B (Preserving subgraph edges when nesting in a supergraph)
+    Verification of (partial) substitution of condition B (Preserving subgraph edges when embedded in a supergraph)
 
     Args:
       sub (dict): Substitution to be checked
@@ -394,7 +387,8 @@ class Analysis:
     """
     for vertex in sub.keys():
       for nextVertex in np.argwhere(self.__graph1.matrix[vertex] == 1)[:, 0]:
-        if nextVertex in sub.keys() and sub[nextVertex] not in np.argwhere(self.__graph2.matrix[sub[vertex]] == 1)[:, 0]:
+        if nextVertex in sub.keys() and sub[nextVertex] not in np.argwhere(self.__graph2.matrix[sub[vertex]] == 1)[:,
+                                                               0]:
           return False
     return True
 
@@ -500,14 +494,17 @@ class Analysis:
       for nextVertex in np.delete(np.uint32(range(self.__graph1.size)), keysToCheck):
         verticesWithTransition = np.uint32(np.intersect1d(np.argwhere(self.__graph1.matrix[:, nextVertex] == 1)[:, 0],
                                                           keysToCheck))
+        variants = np.array([])
         for vertexTo in verticesWithTransition:
-          variants = np.setdiff1d(np.uint32(list(filter(lambda vertex:
-                                                        self.__graph2.hd[vertex, 0] >= self.__graph1.hd[
-                                                          nextVertex, 0] and
-                                                        self.__graph2.hd[vertex, 1] >= self.__graph1.hd[
-                                                          nextVertex, 1],
-                                                        np.argwhere(self.__graph2.matrix[sub[vertexTo]] == 1)[:, 0]))),
-                                  valuesToCheck)
+          variants = np.union1d(np.setdiff1d(np.uint32(list(filter(lambda vertex:
+                                                                   self.__graph2.hd[vertex, 0] >= self.__graph1.hd[
+                                                                     nextVertex, 0] and
+                                                                   self.__graph2.hd[vertex, 1] >= self.__graph1.hd[
+                                                                     nextVertex, 1],
+                                                                   np.argwhere(self.__graph2.matrix[sub[vertexTo]] \
+                                                                               == 1)[:, 0]))),
+                                             valuesToCheck),
+                                variants)
         if variants.size == 0:
           variants = np.setdiff1d(np.argwhere((self.__graph2.hd[:, 0] >= self.__graph1.hd[nextVertex, 0]) &
                                               (self.__graph2.hd[:, 1] >= self.__graph1.hd[nextVertex, 1]))[:, 0],
@@ -541,7 +538,7 @@ class Analysis:
 
     Returns:
       The result of the analysis
-      (0 - graphs are isomorphically nested, 1, 2 or 3 - graphs are not isomorphically nested)
+      (0 - graphs are isomorphically embedded, 1, 2 or 3 - graphs are not isomorphically embedded)
     """
     if self.__todoPDF:
       output = [[]]
@@ -555,17 +552,19 @@ class Analysis:
         partialVariants = self.__makePartialVariants(partialSubs)
         completeSubs = self.__makeCompleteSubs(partialVariants)
         if len(completeSubs) > 0:
+          subsOutput = list()
           for sub in completeSubs:
             translatedSub = {}
             for vertex in sub:
               translatedSub[self.__graph1.transition[vertex]] = self.__graph2.transition[sub[vertex]]
-            self.completeSubs.append(translatedSub)
+            subsOutput.append(translatedSub)
+          self.completeSubs.append(subsOutput)
           if self.__todoPDF:
             output[0].append(f"""The graph {self.__graph1.fullName} is isomorphically embedded 
             in the graph {self.__graph2.fullName}""")
             output[0].append("The resulting substitutions that satisfy condition B:")
             output.append(list())
-            for index, sub in enumerate(self.completeSubs):
+            for index, sub in enumerate(subsOutput):
               output[1].append([f"Substitution {index + 1}:", list(sub.keys()), list(sub.values())])
             self.__output.append(output)
           return 0
@@ -595,7 +594,7 @@ class Analysis:
 
     Returns:
       The result of the analysis
-      (0 - graphs are isomorphically nested; 1, 2 and 3 - graphs are not isomorphically nested)
+      (0 - graphs are isomorphically embedded; 1, 2 and 3 - graphs are not isomorphically embedded)
     """
     self.__clear()
     startTime = time.time()
@@ -612,7 +611,7 @@ class Analysis:
       self.__graph1, self.__graph2 = self.__graph2, self.__graph1
 
       if self.analysisResult == 0 and self.__todoPDF:
-        self.__output.append([f"The graphs {self.__graph1.fullName} and {self.__graph2.fullName} are isomorphic"])
+        self.__output.append(f"The graphs {self.__graph1.fullName} and {self.__graph2.fullName} are isomorphic")
     else:
       self.analysisResult = self.__algorithm()
 

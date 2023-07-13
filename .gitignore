@@ -3,5 +3,7 @@
 /pngs
 /venv
 /tests/.ipynb_checkpoints
+/tests/pngs
+/tests/reports
 
 *.pdf
